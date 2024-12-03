@@ -206,8 +206,7 @@ def get_solution(data, manager, routing, assignment):
 
 
 def get_best_routes(data):
-
-
+    
     # Create the routing index manager.
     manager = pywrapcp.RoutingIndexManager(
         len(data["distance_matrix"]), data["num_vehicles"], data["depot"]
