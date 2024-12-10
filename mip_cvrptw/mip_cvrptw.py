@@ -17,6 +17,7 @@ duration_matrix = data["durations"]
 max_veh_weight = data["max_weight"]
 max_veh_volume = data["max_volume"]
 time_windows = data["timeWindows"]
+fixed_cost_matrix = data["vehicle_base_fare_matrix"]
 start_time = [i for i, j in time_windows]
 finish_time = [j for i, j in time_windows]
 nodes = list(loc_id_mapping.values())
@@ -32,6 +33,11 @@ time_matrix = {
     for i in range(len(duration_matrix))
     for j in range(len(duration_matrix[i]))
 }
+fixed_cost = {
+    (i, j): fixed_cost_matrix[i][j]
+    for i in range(len(fixed_cost_matrix))
+    for j in range(len(fixed_cost_matrix[i]))
+}
 df_vehicle = pd.DataFrame([max_veh_weight,max_veh_volume]).transpose().reset_index()
 df_vehicle.columns = ["v_id","max_weight","max_volume"]
 vehicles = list(df_vehicle["v_id"])
@@ -39,6 +45,8 @@ demand_w = list(df_orders_f["order_weight"])
 demand_v = list(df_orders_f["order_volume"])
 max_vehw =list(df_vehicle["max_weight"])
 max_vehv =list(df_vehicle["max_volume"])
+variable_cost = list(data["perKmCostPerVehicle"])
+variable_cost
 # CVRPTW FORMULATION
 my_model=gp.Model('CVRPTW')
 
@@ -49,13 +57,14 @@ wjk = my_model.addVars(customers, vehicles, vtype = GRB.CONTINUOUS, name = 'wjk'
 vjk = my_model.addVars(customers, vehicles, vtype = GRB.CONTINUOUS, name = 'vjk')
 
 # OBJECTIVE FUNCTION
-obj_fn = (gp.quicksum(dist_matrix[i,j]* gp.quicksum(xijk[i,j,k] for k in vehicles) for i in nodes for j in nodes))
+# obj_fn = (gp.quicksum(dist_matrix[i,j]* gp.quicksum(xijk[i,j,k] for k in vehicles) for i in nodes for j in nodes))
+# my_model.setObjective(obj_fn, GRB.MINIMIZE)
+obj_fn = gp.quicksum(dist_matrix[i, j] * variable_cost[k] * xijk[i, j, k] for i in nodes for j in nodes for k in vehicles)+gp.quicksum(fixed_cost[i,k] for i in nodes for k in vehicles)
 my_model.setObjective(obj_fn, GRB.MINIMIZE)
-
 # CONSTRAINTS
 #Source to sink constraints
-my_model.addConstrs(gp.quicksum(xijk[0,j,k] for j in customers)==1 for k in vehicles)
-my_model.addConstrs(gp.quicksum(xijk[i,0,k] for i in customers)==1 for k in vehicles);
+my_model.addConstrs(gp.quicksum(xijk[0,j,k] for j in customers)<=1 for k in vehicles)
+my_model.addConstrs(gp.quicksum(xijk[i,0,k] for i in customers)<=1 for k in vehicles);
 
 my_model.addConstrs(gp.quicksum(xijk[i,h,k] for i in nodes)- gp.quicksum(xijk[h,j,k] for j in nodes)==0 
                     for h in customers for k in vehicles);
@@ -72,8 +81,8 @@ my_model.addConstrs(gp.quicksum(vjk[j,k] for k in vehicles) == demand_v[j]
 my_model.addConstrs(gp.quicksum(vjk[j,k] for j in customers) <= max_vehv[k] for k in vehicles);
 
 bigM = 1000000
-my_model.addConstrs(wjk[j,k] <= bigM * gp.quicksum(xijk[i,j,k] for i in nodes) for j in customers for k in vehicles);
-my_model.addConstrs(vjk[j,k] <= bigM * gp.quicksum(xijk[i,j,k] for i in nodes) for j in customers for k in vehicles);
+# my_model.addConstrs(wjk[j,k] <= bigM * gp.quicksum(xijk[i,j,k] for i in nodes) for j in customers for k in vehicles);
+# my_model.addConstrs(vjk[j,k] <= bigM * gp.quicksum(xijk[i,j,k] for i in nodes) for j in customers for k in vehicles);
 
 my_model.addConstrs(sik[i,k] + time_matrix[i,j] - sik[j,k] <= (1-xijk[i,j,k]) *bigM 
                     for i in customers 
@@ -82,6 +91,15 @@ my_model.addConstrs(sik[i,k] + time_matrix[i,j] - sik[j,k] <= (1-xijk[i,j,k]) *b
 my_model.addConstrs(sik[i,k] <= finish_time[i] for i in nodes for k in vehicles)
                     
 my_model.addConstrs(sik[i,k] >= start_time[i] for i in nodes for k in vehicles); 
+# MAX NO. OF CUSTOMER IN A ROUTE==2
+my_model.addConstrs(gp.quicksum(xijk[i,j,k] for i in nodes for j in nodes)<=3 for k in vehicles)
+# maximum distance between two customers = 100 Km
+max_distance = 100
+my_model.addConstrs(
+    dist_matrix[i, j] * xijk[i, j, k] <= max_distance
+    for i in customers for j in customers for k in vehicles
+)
+
 my_model.optimize()
 
 # Create a new dictionary to store non-zero values
@@ -114,7 +132,7 @@ for (i, j, k), value in non_zero_xijk.items():
 
 # Display the routes for each vehicle
 for vehicle, route in vehicle_routes.items():
-    print(f"Vehicle {vehicle} Route: {route}")
+    print(f"Vehicle {vehicle} Route(Wt: {max_vehw[vehicle]}, Vol:{max_vehv[vehicle]}): {route}")
 
 # Calculate and display the distance traveled by each vehicle
 vehicle_distances = {}
@@ -122,8 +140,30 @@ vehicle_distances = {}
 for vehicle, route in vehicle_routes.items():
     total_distance = sum(dist_matrix[i, j] for i, j in route)
     vehicle_distances[vehicle] = total_distance
-    print(f"Vehicle {vehicle} Distance Traveled: {total_distance}")
+    print(f"Vehicle {vehicle} Distance Travelled: {total_distance}")
 
 # Optionally, print a summary
 total_distance_all_vehicles = sum(vehicle_distances.values())
 print(f"Total Distance Traveled by All Vehicles: {total_distance_all_vehicles}")
+# Calculate the total variable cost
+total_variable_cost = sum(
+    dist_matrix[i, j] * variable_cost[k] * xijk[i, j, k].X
+    for i in nodes for j in nodes for k in vehicles
+    if xijk[i, j, k].X > 0.5
+)
+
+# Calculate the total fixed cost
+total_fixed_cost = sum(
+    fixed_cost[i, k]
+    for i in nodes for k in vehicles
+    if sum(xijk[i, j, k].X for j in nodes) > 0.5
+)
+
+
+# Calculate the total cost
+total_cost = total_variable_cost + total_fixed_cost
+
+# Display the total cost
+print(f"Total Variable Cost: {total_variable_cost}")
+print(f"Total Fixed Cost: {total_fixed_cost}")
+print(f"Total Cost: {total_cost}")

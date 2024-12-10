@@ -1,0 +1,79 @@
+Vehicle,Route,Order,Customer,Weight
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 13,Customer 4,0.002
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 14,Customer 4,0.002
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 15,Customer 4,0.023
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 16,Customer 4,0.003
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 17,Customer 4,0.005
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 18,Customer 4,0.004
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 19,Customer 5,0.002
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 20,Customer 5,0.003
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 21,Customer 5,0.003
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 22,Customer 5,0.008
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 23,Customer 5,0.003
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 24,Customer 5,0.005
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 25,Customer 5,0.008
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 26,Customer 5,0.003
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 27,Customer 5,0.005
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 28,Customer 5,0.028
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 29,Customer 5,0.005
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 30,Customer 5,0.003
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 39,Customer 3,0.007
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 40,Customer 3,0.003
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 41,Customer 3,0.005
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 42,Customer 3,0.025
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 43,Customer 3,0.02
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 44,Customer 3,0.015
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 45,Customer 3,0.005
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 46,Customer 3,0.015
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 47,Customer 3,0.05
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 48,Customer 3,0.001
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 49,Customer 3,0.009000000000000001
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 50,Customer 3,0.005
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 51,Customer 3,0.035
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 52,Customer 3,0.01
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 53,Customer 3,0.01
+Vehicle 0,0 to 5 -> 3 to 4 -> 4 to 0 -> 5 to 3,Order 54,Customer 3,0.015
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 1,Customer 7,0.005
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 2,Customer 7,0.005
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 3,Customer 7,0.008
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 4,Customer 7,0.005
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 5,Customer 7,0.005
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 6,Customer 7,0.005
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 7,Customer 7,0.005
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 8,Customer 7,0.005
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 9,Customer 7,0.005
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 10,Customer 7,0.005
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 11,Customer 7,0.005
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 12,Customer 7,0.005
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 55,Customer 1,0.01
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 56,Customer 1,0.01
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 57,Customer 1,0.02
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 58,Customer 1,0.02
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 59,Customer 1,0.03
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 60,Customer 1,0.01
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 61,Customer 1,0.005
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 62,Customer 1,0.025
+Vehicle 1,0 to 7 -> 1 to 0 -> 7 to 1,Order 63,Customer 1,0.02
+Vehicle 2,0 to 6 -> 6 to 0,Order 64,Customer 6,0.005
+Vehicle 2,0 to 6 -> 6 to 0,Order 65,Customer 6,0.02
+Vehicle 2,0 to 6 -> 6 to 0,Order 66,Customer 6,0.005
+Vehicle 2,0 to 6 -> 6 to 0,Order 67,Customer 6,0.005
+Vehicle 2,0 to 6 -> 6 to 0,Order 68,Customer 6,0.02
+Vehicle 2,0 to 6 -> 6 to 0,Order 69,Customer 6,0.003
+Vehicle 2,0 to 6 -> 6 to 0,Order 70,Customer 6,0.04
+Vehicle 2,0 to 6 -> 6 to 0,Order 71,Customer 6,0.03
+Vehicle 2,0 to 6 -> 6 to 0,Order 72,Customer 6,0.02
+Vehicle 2,0 to 6 -> 6 to 0,Order 73,Customer 6,0.025
+Vehicle 2,0 to 6 -> 6 to 0,Order 74,Customer 6,0.02
+Vehicle 2,0 to 6 -> 6 to 0,Order 75,Customer 6,0.06
+Vehicle 2,0 to 6 -> 6 to 0,Order 76,Customer 6,0.005
+Vehicle 3,0 to 2 -> 2 to 0,Order 31,Customer 2,0.009000000000000001
+Vehicle 3,0 to 2 -> 2 to 0,Order 32,Customer 2,0.005
+Vehicle 3,0 to 2 -> 2 to 0,Order 33,Customer 2,0.009000000000000001
+Vehicle 3,0 to 2 -> 2 to 0,Order 34,Customer 2,0.009000000000000001
+Vehicle 3,0 to 2 -> 2 to 0,Order 35,Customer 2,0.005
+Vehicle 3,0 to 2 -> 2 to 0,Order 36,Customer 2,0.005
+Vehicle 3,0 to 2 -> 2 to 0,Order 37,Customer 2,0.003
+Vehicle 3,0 to 2 -> 2 to 0,Order 38,Customer 2,0.005
+Vehicle 4,No route assigned,No orders served,,
+Vehicle 5,No route assigned,No orders served,,
