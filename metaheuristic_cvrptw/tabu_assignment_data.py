@@ -3,6 +3,7 @@ import time
 import pandas as pd
 import numpy as np
 import itertools
+import cProfile
 # Start measuring time
 starting_time = time.time()
 
@@ -61,63 +62,85 @@ def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w)
     return solution
 
 def is_valid_route(route, demands_w, max_capacity_w):
-    """
-    Helper function to check if a route satisfies capacity constraints.
-    """
-    total_weight = sum(demands_w[node] for node in route if node != 0)  # Exclude depot
-    return total_weight <= max_capacity_w
+    total_weight = 0
+    for node in route:
+        if node != 0:  # Exclude depot
+            total_weight += demands_w[node]
+            if total_weight > max_capacity_w:
+                return False
+    return True
 
 def generate_neighbors(solution, vehicles, nodes, tabu_list, max_capacity_w, demands_w, dist_matrix):
     """
     Generate neighbors for the given solution using relocation, swap, and 2-opt moves.
+    Optimized for reduced runtime.
     """
     s_t = time.time()
     neighbors = []
 
+    # Cache current weights for each vehicle
+    route_weights = {
+        v: sum(demands_w[node] for node in solution[v] if node != 0) for v in vehicles
+    }
+
     # Relocation: Move a customer from one vehicle to another
-    for v1, v2 in itertools.permutations(vehicles, 2):  # Consider different vehicle pairs
-        # Relocation from v1 to v2
+    for v1, v2 in itertools.permutations(vehicles, 2):
         for i in range(1, len(solution[v1]) - 1):  # Exclude depot
             node = solution[v1][i]
             for j in range(1, len(solution[v2])):  # Allow insertions in v2
-                # Perform the move
-                new_solution = {v: solution[v][:] for v in vehicles}
-                new_solution[v1].remove(node)
-                new_solution[v2].insert(j, node)
+                # Modify routes incrementally
+                route_v1 = solution[v1][:]
+                route_v2 = solution[v2][:]
+                route_v1.remove(node)
+                route_v2.insert(j, node)
 
-                # Validate the new solution
-                if (is_valid_route(new_solution[v1], demands_w, max_capacity_w[v1]) and
-                    is_valid_route(new_solution[v2], demands_w, max_capacity_w[v2]) and
-                    new_solution not in tabu_list):
-                    neighbors.append(new_solution)
+                # Incremental weight checks
+                new_weight_v1 = route_weights[v1] - demands_w[node]
+                new_weight_v2 = route_weights[v2] + demands_w[node]
+
+                if new_weight_v1 <= max_capacity_w[v1] and new_weight_v2 <= max_capacity_w[v2]:
+                    new_solution = solution.copy()
+                    new_solution[v1] = route_v1
+                    new_solution[v2] = route_v2
+                    if new_solution not in tabu_list:
+                        neighbors.append(new_solution)
 
     # Swap: Swap two customers between two different vehicles
-    for v1, v2 in itertools.permutations(vehicles, 2):  # Consider different vehicle pairs
-        for i in range(1, len(solution[v1]) - 1):  # Exclude depot
-            for j in range(1, len(solution[v2]) - 1):  # Exclude depot
-                # Perform the swap
+    for v1, v2 in itertools.permutations(vehicles, 2):
+        for i in range(1, len(solution[v1]) - 1):
+            for j in range(1, len(solution[v2]) - 1):
                 node1, node2 = solution[v1][i], solution[v2][j]
-                new_solution = {v: solution[v][:] for v in vehicles}
-                new_solution[v1][i], new_solution[v2][j] = node2, node1
 
-                # Validate the new solution
-                if (is_valid_route(new_solution[v1], demands_w, max_capacity_w[v1]) and
-                    is_valid_route(new_solution[v2], demands_w, max_capacity_w[v2]) and
-                    new_solution not in tabu_list):
-                    neighbors.append(new_solution)
+                # Modify routes incrementally
+                route_v1 = solution[v1][:]
+                route_v2 = solution[v2][:]
+                route_v1[i], route_v2[j] = node2, node1
+
+                # Incremental weight checks
+                new_weight_v1 = route_weights[v1] - demands_w[node1] + demands_w[node2]
+                new_weight_v2 = route_weights[v2] - demands_w[node2] + demands_w[node1]
+
+                if new_weight_v1 <= max_capacity_w[v1] and new_weight_v2 <= max_capacity_w[v2]:
+                    new_solution = solution.copy()
+                    new_solution[v1] = route_v1
+                    new_solution[v2] = route_v2
+                    if new_solution not in tabu_list:
+                        neighbors.append(new_solution)
 
     # 2-Opt: Reverse a subsequence in a single route
     for v in vehicles:
         route = solution[v]
         for i in range(1, len(route) - 2):  # Exclude depot
             for j in range(i + 1, len(route) - 1):  # Ensure valid subsequence
-                # Reverse a subsequence
-                new_solution = {v: solution[v][:] for v in vehicles}
-                new_solution[v][i:j+1] = new_solution[v][i:j+1][::-1]
+                new_route = route[:]
+                new_route[i:j + 1] = reversed(new_route[i:j + 1])
 
-                # Validate the new solution
-                if is_valid_route(new_solution[v], demands_w, max_capacity_w[v]) and new_solution not in tabu_list:
-                    neighbors.append(new_solution)
+                # Incremental weight check (no weight change for 2-opt)
+                if route_weights[v] <= max_capacity_w[v]:
+                    new_solution = solution.copy()
+                    new_solution[v] = new_route
+                    if new_solution not in tabu_list:
+                        neighbors.append(new_solution)
 
     e_t = time.time()
     run_time = e_t - s_t
@@ -136,25 +159,74 @@ def calculate_total_distance(solution, dist_matrix):
             )
     return total_distance
 
+# def calculate_total_cost(solution, dist_matrix, Q1, var_cost, fixed_cost):
+#     total_fixed_cost = 0
+#     total_variable_cost = 0
+
+#     for vehicle, route in solution.items():
+#         route_length = len(route)
+#         if route_length > 1:  # Skip unused vehicles (routes with only the depot)
+#             # Add fixed cost for the vehicle
+#             total_fixed_cost += fixed_cost[vehicle]
+
+#             # Calculate total distance using a loop (optimized)
+#             total_distance = 0
+#             for i in range(len(route) - 1):
+#                 total_distance += dist_matrix[route[i], route[i + 1]]
+
+#             # Add variable cost (distance-based)
+#             total_variable_cost += total_distance * var_cost[vehicle]
+#     total_cost = total_fixed_cost + total_variable_cost
+#     return total_cost
 def calculate_total_cost(solution, dist_matrix, Q1, var_cost, fixed_cost):
-    """
-    Calculate the total cost for a given solution.
-    Fixed costs are incurred per vehicle used, and variable costs are proportional to distance.
-    """
-    total_fixed_cost = 0
-    total_variable_cost = 0
+    # Store the previous solution and costs for incremental updates
+    if not hasattr(calculate_total_cost, "previous_solution"):
+        calculate_total_cost.previous_solution = {}
+        calculate_total_cost.previous_cost = {}
+        calculate_total_cost.total_cost = 0
+
+    total_cost = 0
 
     for vehicle, route in solution.items():
-        if len(route) > 1:  # Skip unused vehicles (routes with only the depot)
-            # Add fixed cost for the vehicle
-            total_fixed_cost += fixed_cost[vehicle]
-            # Add variable cost (distance-based)
-            total_distance = sum(
-                dist_matrix[route[i], route[i + 1]] for i in range(len(route) - 1)
-            )
-            total_variable_cost += total_distance * var_cost[vehicle]
+        previous_route = calculate_total_cost.previous_solution.get(vehicle, [])
 
-    return total_fixed_cost + total_variable_cost
+        # Recalculate cost only if the route has changed
+        if route != previous_route:
+            if len(route) > 1:  # Skip unused vehicles (routes with only the depot)
+                # Fixed cost for the vehicle
+                fixed_cost_vehicle = fixed_cost[vehicle]
+
+                # Calculate total distance using a loop
+                total_distance = 0
+                for i in range(len(route) - 1):
+                    total_distance += dist_matrix[route[i], route[i + 1]]
+
+                # Variable cost (distance-based)
+                variable_cost_vehicle = total_distance * var_cost[vehicle]
+
+                # Update the previous cost for this vehicle
+                calculate_total_cost.previous_cost[vehicle] = fixed_cost_vehicle + variable_cost_vehicle
+            else:
+                # No cost for unused vehicles
+                calculate_total_cost.previous_cost[vehicle] = 0
+
+        # Ensure the vehicle has an entry in previous_cost to avoid KeyError
+        if vehicle not in calculate_total_cost.previous_cost:
+            calculate_total_cost.previous_cost[vehicle] = 0
+
+        # Add the cost of this vehicle (either recalculated or from previous)
+        total_cost += calculate_total_cost.previous_cost[vehicle]
+
+    # Update the previous solution
+    calculate_total_cost.previous_solution = solution.copy()
+
+    # Store the total cost
+    calculate_total_cost.total_cost = total_cost
+
+    return total_cost
+
+
+
 
 
 def tabu_search(
@@ -222,7 +294,8 @@ def tabu_search(
     en_time = time.time()
     total_time = en_time - st_time
     print(f"Total time in Tabu Search: {total_time:.2f} seconds")
-    return best_solution, best_cost, current_costs
+
+    return best_solution,best_cost,current_costs
 
 
 
@@ -276,7 +349,7 @@ for i in travel_matrix_df.index:
     time_matrix[(travel_matrix_df['mapped_source'][i], travel_matrix_df['mapped_destination'][i])] = travel_matrix_df['travel_time_in_min'][i]
 max_capacity_w = {v: Q1[v] for v in range(len(Q1))}
 best_solution, best_cost, cost_progress = tabu_search(
-    nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost, max_iter=45, tabu_tenure=5
+    nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost, max_iter=45, tabu_tenure=10
 )
 
 # End measuring time
@@ -296,3 +369,14 @@ for v, route in best_solution.items():
 print(f"Total cost = {best_cost}")
 print(f"Total distance = {sum(distance)}")
 
+
+# Create a profile object
+profiler = cProfile.Profile()
+
+# Profile the code block
+profiler.enable()
+tabu_search(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost, max_iter=45, tabu_tenure=10)  # Call your connected functions
+profiler.disable()
+
+# Print profiling results
+profiler.print_stats(sort='time')
