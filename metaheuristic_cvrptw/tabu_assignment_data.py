@@ -8,11 +8,7 @@ import cProfile
 starting_time = time.time()
 
 def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w):
-    """
-    Generate an initial solution where each vehicle starts from the depot
-    and routes are built using the path-cheapest arc strategy.
-    Ensures each customer is visited at least once.
-    """
+
     s_t = time.time()
     solution = {v: [] for v in vehicles}
     remaining_demand_w = copy.deepcopy(demands_w)
@@ -223,6 +219,7 @@ def calculate_total_cost(solution, dist_matrix, Q1, var_cost, fixed_cost):
     # Store the total cost
     calculate_total_cost.total_cost = total_cost
 
+    
     return total_cost
 
 
@@ -269,7 +266,7 @@ def tabu_search(
             current_solution = best_neighbor
             best_cost = best_neighbor_cost
             best_solution = current_solution
-            no_improvement_count = 0  # Reset the no improvement counter
+            no_improvement_count = 0 
         else:
             no_improvement_count += 1
 
@@ -297,10 +294,6 @@ def tabu_search(
 
     return best_solution,best_cost,current_costs
 
-
-
-
-
 # Load data
 locations_df = pd.read_csv('locations.csv')
 order_list_df = pd.read_excel('order_list_1.xlsx')
@@ -308,14 +301,15 @@ travel_matrix_df = pd.read_csv('travel_matrix.csv')
 trucks_df = pd.read_csv('trucks.csv')
 Q = sorted(list(set(trucks_df['truck_max_weight'])))
 Q1 = [Q[0]]*5 + [Q[1]]*1+ [Q[2]]*2 + [Q[3]]*7 + [Q[4]]*4
+# Q1 = [Q[0]]*7 + [Q[1]]*3+ [Q[2]]*5 + [Q[3]]*8 + [Q[4]]*6
 vcost = [24,35,45,56,90]
 var_cost = [vcost[0]]*5 + [vcost[1]]*1+ [vcost[2]]*2 + [vcost[3]]*7 + [vcost[4]]*4
+# var_cost = [vcost[0]]*7 + [vcost[1]]*3+ [vcost[2]]*5 + [vcost[3]]*8 + [vcost[4]]*6
 fixed_cost = Q1
 dest1 = list(set(order_list_df['Destination Code']))
 dest = [str(i) for i in dest1]
 order_list_df = order_list_df[order_list_df['Destination Code'].isin(dest1)]
 order_list_df1 = order_list_df.sort_values(by = 'Destination Code').groupby('Destination Code').sum("Total Weight").reset_index()
-sum(order_list_df1["Total Weight"])
 locations_df = locations_df[locations_df['location_code'].isin(dest + ['A123'])]
 # Convert loading/unloading windows to minutes with explicit format
 locations_df['start_minutes'] = pd.to_datetime(locations_df['location_loading_unloading_window_start'], format='%H:%M').dt.hour * 60 + pd.to_datetime(locations_df['location_loading_unloading_window_start'], format='%H:%M').dt.minute
@@ -370,13 +364,13 @@ print(f"Total cost = {best_cost}")
 print(f"Total distance = {sum(distance)}")
 
 
-# Create a profile object
-profiler = cProfile.Profile()
+# # Create a profile object
+# profiler = cProfile.Profile()
 
-# Profile the code block
-profiler.enable()
-tabu_search(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost, max_iter=45, tabu_tenure=10)  # Call your connected functions
-profiler.disable()
+# # Profile the code block
+# profiler.enable()
+# tabu_search(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost, max_iter=45, tabu_tenure=10)  # Call your connected functions
+# profiler.disable()
 
-# Print profiling results
-profiler.print_stats(sort='time')
+# # Print profiling results
+# profiler.print_stats(sort='time')
