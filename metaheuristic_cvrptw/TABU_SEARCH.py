@@ -188,39 +188,22 @@ def is_valid_route(route, demands_w, demands_v, max_capacity_w, max_capacity_v):
 
 
 
-# def calculate_total_cost(solution, dist_matrix, fixed_cost, variable_cost):
-#     total_fixed_cost = 0
-#     total_variable_cost = 0
-
-#     for v, route in solution.items():
-#         if len(route) > 1:  # Ignore empty routes
-#             for i in range(len(route)-1):
-#                 total_fixed_cost += fixed_cost[route[i], v]  # Fixed cost for the vehicle
-
-#             total_variable_cost += sum(
-#                 dist_matrix[route[i], route[i + 1]] * variable_cost[v]
-#                 for i in range(len(route) - 1)
-#             )
-#     total_cost = total_fixed_cost + total_variable_cost
-#     return total_cost,total_fixed_cost,total_variable_cost
 def calculate_total_cost(solution, dist_matrix, fixed_cost, variable_cost):
     total_fixed_cost = 0
     total_variable_cost = 0
 
     for v, route in solution.items():
-        route_length = len(route)
-        if route_length > 1:  # Ignore empty or single-node routes
-            # Fixed cost is added only once per vehicle if it has a valid route
-            total_fixed_cost += fixed_cost[v]
+        if len(route) > 1:  # Ignore empty routes
+            for i in range(len(route)-1):
+                total_fixed_cost += fixed_cost[route[i], v]  # Fixed cost for the vehicle
 
-            # Calculate the total variable cost for the current route
             total_variable_cost += sum(
                 dist_matrix[route[i], route[i + 1]] * variable_cost[v]
-                for i in range(route_length - 1)
+                for i in range(len(route) - 1)
             )
-
     total_cost = total_fixed_cost + total_variable_cost
-    return total_cost, total_fixed_cost, total_variable_cost
+    return total_cost,total_fixed_cost,total_variable_cost
+
 
 
 def calculate_total_distance(solution, dist_matrix):

@@ -80,11 +80,11 @@ my_model.addConstrs(gp.quicksum(vjk[j,k] for k in vehicles) == demand_v[j]
                     for j in customers)
 my_model.addConstrs(gp.quicksum(vjk[j,k] for j in customers) <= max_vehv[k] for k in vehicles);
 
-bigM = 1000000
-# my_model.addConstrs(wjk[j,k] <= bigM * gp.quicksum(xijk[i,j,k] for i in nodes) for j in customers for k in vehicles);
-# my_model.addConstrs(vjk[j,k] <= bigM * gp.quicksum(xijk[i,j,k] for i in nodes) for j in customers for k in vehicles);
+bigM = 10000
+my_model.addConstrs(wjk[j,k] <= max_vehw[k] * gp.quicksum(xijk[i,j,k] for i in nodes) for j in customers for k in vehicles);
+my_model.addConstrs(vjk[j,k] <= max_vehv[k] * gp.quicksum(xijk[i,j,k] for i in nodes) for j in customers for k in vehicles);
 
-my_model.addConstrs(sik[i,k] + time_matrix[i,j] - sik[j,k] <= (1-xijk[i,j,k]) *bigM 
+my_model.addConstrs(sik[i,k] + time_matrix[i,j] - sik[j,k] <= (1-xijk[i,j,k]) *bigM
                     for i in customers 
                     for j in customers for k in vehicles);
 
@@ -167,3 +167,21 @@ total_cost = total_variable_cost + total_fixed_cost
 print(f"Total Variable Cost: {total_variable_cost}")
 print(f"Total Fixed Cost: {total_fixed_cost}")
 print(f"Total Cost: {total_cost}")
+
+# Create a dictionary to store volume demand served by each vehicle
+vehicle_volume_demand = {}
+print("*"*75)
+# Iterate over all vehicles and customers
+for k in vehicles:
+    vehicle_volume_demand[k] = {} 
+     # Initialize dictionary for each vehicle
+    for j in customers:
+        if vjk[j, k].X > 0.5:  # If a vehicle serves a location with volume > 0
+            vehicle_volume_demand[k][j] = vjk[j, k].X
+
+# Display the volume demand served by each vehicle at each location
+print("\nVolume Demand Served by Each Vehicle:")
+for vehicle, volumes in vehicle_volume_demand.items():
+    print(f"Vehicle {vehicle} (Max Volume Capacity: {max_vehv[vehicle]}):")
+    for location, volume in volumes.items():
+        print(f"  Location {location}: Volume = {volume:.2f}")
