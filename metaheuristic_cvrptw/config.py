@@ -2,12 +2,9 @@ import pandas as pd
 PARAMETERS = {
     "max_iter": 100,
     "tabu_tenure": 10,
-    "removal_fraction": 0.2, 
+    "lns_removal_fraction": 0.2, 
     "stoppage criteria_no_improvement_count": 3,
     "Diversification_logic_run_count": 3,
-
-
-
 }
 
 

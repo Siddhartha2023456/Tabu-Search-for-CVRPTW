@@ -1,7 +1,6 @@
 from config import PARAMETERS,load_data,preprocess_data
 from tabu_search_utils import tabu_search
 
-# Example usage:
 locations_df, order_list_df, travel_matrix_df, trucks_df = load_data()
 nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1, var_cost, fixed_cost = preprocess_data(
     locations_df, order_list_df, travel_matrix_df, trucks_df)

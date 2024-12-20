@@ -215,7 +215,7 @@ def tabu_search(
 
         # Remove a subset of customers randomly
         all_customers = [node for v in vehicles for node in solution[v] if node != 0]
-        num_to_remove = max(1, int(len(all_customers)/(10*PARAMETERS["removal_fraction"])))  # Remove 20% of customers
+        num_to_remove = max(1, int(len(all_customers)/(10*PARAMETERS["lns_removal_fraction"])))  # Remove 20% of customers
         removed_customers = set(np.random.choice(all_customers, num_to_remove, replace=False))
 
         # Remove from routes
