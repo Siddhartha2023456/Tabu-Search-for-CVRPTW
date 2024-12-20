@@ -46,7 +46,7 @@ demand_v = list(df_orders_f["order_volume"])
 max_vehw =list(df_vehicle["max_weight"])
 max_vehv =list(df_vehicle["max_volume"])
 variable_cost = list(data["perKmCostPerVehicle"])
-variable_cost
+#################################################################
 # CVRPTW FORMULATION
 my_model=gp.Model('CVRPTW')
 
@@ -55,19 +55,24 @@ xijk=my_model.addVars(nodes, nodes, vehicles, vtype=GRB.BINARY, name='xijk')
 sik = my_model.addVars(nodes, vehicles, vtype = GRB.CONTINUOUS, name = 'sik')
 wjk = my_model.addVars(customers, vehicles, vtype = GRB.CONTINUOUS, name = 'wjk')
 vjk = my_model.addVars(customers, vehicles, vtype = GRB.CONTINUOUS, name = 'vjk')
+wtik = my_model.addVars(nodes, vehicles, vtype=GRB.CONTINUOUS, name='wik')
 
 # OBJECTIVE FUNCTION
 # obj_fn = (gp.quicksum(dist_matrix[i,j]* gp.quicksum(xijk[i,j,k] for k in vehicles) for i in nodes for j in nodes))
 # my_model.setObjective(obj_fn, GRB.MINIMIZE)
-obj_fn = gp.quicksum(dist_matrix[i, j] * variable_cost[k] * xijk[i, j, k] for i in nodes for j in nodes for k in vehicles)+gp.quicksum(fixed_cost[i,k] for i in nodes for k in vehicles)
+obj_fn = (
+    gp.quicksum(dist_matrix[i, j] * variable_cost[k] * xijk[i, j, k] for i in nodes for j in nodes for k in vehicles)
+    + gp.quicksum(fixed_cost[i, k] * gp.quicksum(xijk[i, j, k] for j in nodes) for i in nodes for k in vehicles)
+)
+
 my_model.setObjective(obj_fn, GRB.MINIMIZE)
 # CONSTRAINTS
 #Source to sink constraints
 my_model.addConstrs(gp.quicksum(xijk[0,j,k] for j in customers)<=1 for k in vehicles)
-my_model.addConstrs(gp.quicksum(xijk[i,0,k] for i in customers)<=1 for k in vehicles);
+my_model.addConstrs(gp.quicksum(xijk[i,0,k] for i in customers)<=1 for k in vehicles)
 
 my_model.addConstrs(gp.quicksum(xijk[i,h,k] for i in nodes)- gp.quicksum(xijk[h,j,k] for j in nodes)==0 
-                    for h in customers for k in vehicles);
+                    for h in customers for k in vehicles)
 
 my_model.addConstrs(gp.quicksum(xijk[i, j, k] for j in nodes for k in vehicles) == 1 for i in customers);
 my_model.addConstrs(gp.quicksum(xijk[i, j, k] for j in nodes for k in vehicles if i == j) == 0 for i in customers);
@@ -80,28 +85,39 @@ my_model.addConstrs(gp.quicksum(vjk[j,k] for k in vehicles) == demand_v[j]
                     for j in customers)
 my_model.addConstrs(gp.quicksum(vjk[j,k] for j in customers) <= max_vehv[k] for k in vehicles);
 
-bigM = 10000
+bigM = 100000
 my_model.addConstrs(wjk[j,k] <= max_vehw[k] * gp.quicksum(xijk[i,j,k] for i in nodes) for j in customers for k in vehicles);
 my_model.addConstrs(vjk[j,k] <= max_vehv[k] * gp.quicksum(xijk[i,j,k] for i in nodes) for j in customers for k in vehicles);
 
-my_model.addConstrs(sik[i,k] + time_matrix[i,j] - sik[j,k] <= (1-xijk[i,j,k]) *bigM
-                    for i in customers 
-                    for j in customers for k in vehicles);
+# my_model.addConstrs(sik[i,k] + time_matrix[i,j] - sik[j,k] <= (1-xijk[i,j,k]) *bigM
+#                     for i in nodes 
+#                     for j in customers for k in vehicles)
+my_model.addConstrs(
+    sik[i, k] + time_matrix[i, j] + wtik[i, k] - sik[j, k] <= (1 - xijk[i, j, k]) * bigM
+    for i in nodes for j in customers for k in vehicles
+)
 
-my_model.addConstrs(sik[i,k] <= finish_time[i] for i in nodes for k in vehicles)
+# my_model.addConstrs(sik[i,k] <= finish_time[i] for i in nodes for k in vehicles)
                     
-my_model.addConstrs(sik[i,k] >= start_time[i] for i in nodes for k in vehicles); 
+# my_model.addConstrs(sik[i,k] >= start_time[i] for i in nodes for k in vehicles)
+my_model.addConstrs(
+    sik[i, k] >= start_time[i] for i in nodes for k in vehicles
+)
+my_model.addConstrs(
+    sik[i, k] + wtik[i, k] <= finish_time[i] for i in nodes for k in vehicles
+)
+
 # MAX NO. OF CUSTOMER IN A ROUTE==2
-my_model.addConstrs(gp.quicksum(xijk[i,j,k] for i in nodes for j in nodes)<=3 for k in vehicles)
+my_model.addConstrs(gp.quicksum(xijk[i,j,k] for i in nodes for j in nodes)<=4 for k in vehicles)
 # maximum distance between two customers = 100 Km
 max_distance = 100
 my_model.addConstrs(
     dist_matrix[i, j] * xijk[i, j, k] <= max_distance
     for i in customers for j in customers for k in vehicles
 )
-
+my_model.addConstrs(wtik[i, k] >= 0 for i in nodes for k in vehicles)
 my_model.optimize()
-
+####################################################################
 # Create a new dictionary to store non-zero values
 non_zero_xijk = {}
 
@@ -169,19 +185,71 @@ print(f"Total Fixed Cost: {total_fixed_cost}")
 print(f"Total Cost: {total_cost}")
 
 # Create a dictionary to store volume demand served by each vehicle
-vehicle_volume_demand = {}
+# vehicle_volume_demand = {}
 print("*"*75)
-# Iterate over all vehicles and customers
-for k in vehicles:
-    vehicle_volume_demand[k] = {} 
-     # Initialize dictionary for each vehicle
-    for j in customers:
-        if vjk[j, k].X > 0.5:  # If a vehicle serves a location with volume > 0
-            vehicle_volume_demand[k][j] = vjk[j, k].X
+# # Iterate over all vehicles and customers
+# for k in vehicles:
+#     vehicle_volume_demand[k] = {} 
+#      # Initialize dictionary for each vehicle
+#     for j in customers:
+#         if vjk[j, k].X > 0.5:  # If a vehicle serves a location with volume > 0
+#             vehicle_volume_demand[k][j] = vjk[j, k].X
 
-# Display the volume demand served by each vehicle at each location
-print("\nVolume Demand Served by Each Vehicle:")
-for vehicle, volumes in vehicle_volume_demand.items():
-    print(f"Vehicle {vehicle} (Max Volume Capacity: {max_vehv[vehicle]}):")
-    for location, volume in volumes.items():
-        print(f"  Location {location}: Volume = {volume:.2f}")
+# # Display the volume demand served by each vehicle at each location
+# print("\nVolume Demand Served by Each Vehicle:")
+# for vehicle, volumes in vehicle_volume_demand.items():
+#     print(f"Vehicle {vehicle} (Max Volume Capacity: {max_vehv[vehicle]}):")
+#     for location, volume in volumes.items():
+#         print(f"  Location {location}: Volume = {volume:.2f}")
+
+# print("\nStarting Time to Serve Each Location:")
+# starting_times = {}
+
+# # Iterate through all vehicles and nodes
+# for k in vehicles:
+#     for i in nodes:
+#         # Check if the location is visited by this vehicle and if `sik` has a start time value
+#         if hasattr(sik[i, k], "X") and sik[i, k].X > 0:
+#             if k not in starting_times:
+#                 starting_times[k] = {}
+#             starting_times[k][i] = sik[i, k].X  # Record the start time
+
+# # Display starting times in order of visit for each vehicle
+# for vehicle, times in starting_times.items():
+#     print(f"Vehicle {vehicle}:")
+#     # Sort the locations by start time for this vehicle
+#     for location, start_time in sorted(times.items(), key=lambda x: x[1]):
+#         print(f"  Location {location}: Start Time = {start_time:.2f}")
+
+# Store the starting time for each vehicle's route
+vehicle_routes_with_time = {}
+
+for (i, j, k), value in non_zero_xijk.items():
+    if value == 1.0:
+        if k not in vehicle_routes_with_time:
+            vehicle_routes_with_time[k] = []  # Create a list for each vehicle if not already created
+        # Append the route and the starting time at the node `i`
+        vehicle_routes_with_time[k].append((i, j, sik[i, k].X if hasattr(sik[i, k], "X") else sik[i, k]))
+
+# Display the routes with starting times for each vehicle
+for vehicle, route in vehicle_routes_with_time.items():
+    print(f"Vehicle {vehicle} Route(Wt: {max_vehw[vehicle]}, Vol: {max_vehv[vehicle]}):")
+    for i, j, start_time in route:
+        print(f"  From {i} to {j}, Start Time at {i}: {start_time}")
+
+# # Extract waiting times for each location
+# waiting_times = {}
+
+# for k in vehicles:
+#     for i in nodes:
+#         if hasattr(wtik[i, k], "X") and wtik[i, k].X > 0:
+#             if k not in waiting_times:
+#                 waiting_times[k] = {}
+#             waiting_times[k][i] = wtik[i, k].X
+
+# # Print waiting times
+# print("\nWaiting Time at Each Location:")
+# for vehicle, waits in waiting_times.items():
+#     print(f"Vehicle {vehicle}:")
+#     for location, wait_time in waits.items():
+#         print(f"  Location {location}: Waiting Time = {wait_time:.2f}")

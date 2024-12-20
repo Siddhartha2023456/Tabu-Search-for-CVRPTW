@@ -110,11 +110,14 @@ xijk=my_model.addVars(nodes, nodes, vehicles, vtype=GRB.BINARY, name='xijk')
 sik = my_model.addVars(nodes, vehicles, vtype = GRB.CONTINUOUS, name = 'sik')
 w = my_model.addVars(order_cust_pairs, vehicles, vtype = GRB.CONTINUOUS, name = 'wojk')
 v = my_model.addVars(order_cust_pairs, vehicles, vtype = GRB.CONTINUOUS, name = 'vojk')
-
+I = my_model.addVars(vehicles, vtype = GRB.BINARY, name = 'I')
 # Rewritten code from cell 17
 #Objective function
 # obj_fn = (gp.quicksum(dist_matrix[i,j]*(variable_cost[k] for k in vehicles)*gp.quicksum(xijk[i,j,k] for k in vehicles) for i in nodes for j in nodes))
-obj_fn = gp.quicksum(dist_matrix[i, j] * variable_cost[k] * xijk[i, j, k] for i in nodes for j in nodes for k in vehicles)+gp.quicksum(fixed_cost[i,k] for i in nodes for k in vehicles)
+obj_fn = (
+    gp.quicksum(dist_matrix[i, j] * variable_cost[k] * xijk[i, j, k] for i in nodes for j in nodes for k in vehicles)
+    + gp.quicksum(fixed_cost[i, k] * I[k] for k in vehicles for i in nodes)
+)
 
 my_model.setObjective(obj_fn, GRB.MINIMIZE)
 
