@@ -4,8 +4,10 @@ import pandas as pd
 import numpy as np
 import itertools
 import cProfile
+
 # Start measuring time
 starting_time = time.time()
+
 
 def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w):
 
@@ -53,9 +55,10 @@ def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w)
                 solution[v].insert(-1, n)  # Add before returning to depot
                 break
     e_t = time.time()
-    run_time = e_t -s_t
+    run_time = e_t - s_t
     print(f"Time for initial solution:{run_time} seconds")
     return solution
+
 
 def is_valid_route(route, demands_w, max_capacity_w):
     total_weight = 0
@@ -65,6 +68,7 @@ def is_valid_route(route, demands_w, max_capacity_w):
             if total_weight > max_capacity_w:
                 return False
     return True
+
 
 def generate_neighbors(solution, vehicles, nodes, tabu_list, max_capacity_w, demands_w, dist_matrix):
     """
@@ -143,6 +147,7 @@ def generate_neighbors(solution, vehicles, nodes, tabu_list, max_capacity_w, dem
     print(f"Time for generating neighbors: {run_time:.4f} seconds")
     return neighbors
 
+
 def calculate_total_distance(solution, dist_matrix):
     """
     Calculate the total distance for a given solution.
@@ -154,6 +159,7 @@ def calculate_total_distance(solution, dist_matrix):
                 dist_matrix[route[i], route[i + 1]] for i in range(len(route) - 1)
             )
     return total_distance
+
 
 # def calculate_total_cost(solution, dist_matrix, Q1, var_cost, fixed_cost):
 #     total_fixed_cost = 0
@@ -223,11 +229,8 @@ def calculate_total_cost(solution, dist_matrix, Q1, var_cost, fixed_cost):
     return total_cost
 
 
-
-
-
 def tabu_search(
-    nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1, var_cost, fixed_cost, max_iter, tabu_tenure
+        nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1, var_cost, fixed_cost, max_iter, tabu_tenure
 ):
     """
     Tabu Search for minimizing total cost (fixed + variable) in a CVRPTW problem.
@@ -292,58 +295,67 @@ def tabu_search(
     total_time = en_time - st_time
     print(f"Total time in Tabu Search: {total_time:.2f} seconds")
 
-    return best_solution,best_cost,current_costs
+    return best_solution, best_cost, current_costs
+
 
 # Load data
-locations_df = pd.read_csv('locations.csv')
-order_list_df = pd.read_excel('order_list_1.xlsx')
-travel_matrix_df = pd.read_csv('travel_matrix.csv')
-trucks_df = pd.read_csv('trucks.csv')
+locations_df = pd.read_csv("C:/Users/Acer/Documents/GitHub/Tabu-Search-for-CVRPTW/inputs/locations.csv")
+order_list_df = pd.read_excel('C:/Users/Acer/Documents/GitHub/Tabu-Search-for-CVRPTW/inputs/order_list_1.xlsx')
+travel_matrix_df = pd.read_csv('C:/Users/Acer/Documents/GitHub/Tabu-Search-for-CVRPTW/inputs/travel_matrix.csv')
+trucks_df = pd.read_csv('C:/Users/Acer/Documents/GitHub/Tabu-Search-for-CVRPTW/inputs/trucks.csv')
 Q = sorted(list(set(trucks_df['truck_max_weight'])))
-Q1 = [Q[0]]*5 + [Q[1]]*1+ [Q[2]]*2 + [Q[3]]*7 + [Q[4]]*4
-# Q1 = [Q[0]]*7 + [Q[1]]*3+ [Q[2]]*5 + [Q[3]]*8 + [Q[4]]*6
-vcost = [24,35,45,56,90]
-var_cost = [vcost[0]]*5 + [vcost[1]]*1+ [vcost[2]]*2 + [vcost[3]]*7 + [vcost[4]]*4
-# var_cost = [vcost[0]]*7 + [vcost[1]]*3+ [vcost[2]]*5 + [vcost[3]]*8 + [vcost[4]]*6
+Q1 = [Q[0]] * 5 + [Q[1]] * 1 + [Q[2]] * 2 + [Q[3]] * 7 + [Q[4]] * 4
+vcost = [24, 35, 45, 56, 90]
+var_cost = [vcost[0]] * 5 + [vcost[1]] * 1 + [vcost[2]] * 2 + [vcost[3]] * 7 + [vcost[4]] * 4
 fixed_cost = Q1
 dest1 = list(set(order_list_df['Destination Code']))
 dest = [str(i) for i in dest1]
 order_list_df = order_list_df[order_list_df['Destination Code'].isin(dest1)]
-order_list_df1 = order_list_df.sort_values(by = 'Destination Code').groupby('Destination Code').sum("Total Weight").reset_index()
+order_list_df1 = order_list_df.sort_values(by='Destination Code').groupby('Destination Code').sum(
+    "Total Weight").reset_index()
+sum(order_list_df1["Total Weight"])
 locations_df = locations_df[locations_df['location_code'].isin(dest + ['A123'])]
 # Convert loading/unloading windows to minutes with explicit format
-locations_df['start_minutes'] = pd.to_datetime(locations_df['location_loading_unloading_window_start'], format='%H:%M').dt.hour * 60 + pd.to_datetime(locations_df['location_loading_unloading_window_start'], format='%H:%M').dt.minute
-locations_df['end_minutes'] = pd.to_datetime(locations_df['location_loading_unloading_window_end'], format='%H:%M').dt.hour * 60 + pd.to_datetime(locations_df['location_loading_unloading_window_end'], format='%H:%M').dt.minute
-customers = locations_df.sort_values(by = 'location_code').iloc[:len(order_list_df1),:]
-locations_df2 = locations_df.sort_values(by = 'location_code')
+locations_df['start_minutes'] = pd.to_datetime(locations_df['location_loading_unloading_window_start'],
+                                               format='%H:%M').dt.hour * 60 + pd.to_datetime(
+    locations_df['location_loading_unloading_window_start'], format='%H:%M').dt.minute
+locations_df['end_minutes'] = pd.to_datetime(locations_df['location_loading_unloading_window_end'],
+                                             format='%H:%M').dt.hour * 60 + pd.to_datetime(
+    locations_df['location_loading_unloading_window_end'], format='%H:%M').dt.minute
+customers = locations_df.sort_values(by='location_code').iloc[:len(order_list_df1), :]
+locations_df2 = locations_df.sort_values(by='location_code')
 cap_df = dict(zip(trucks_df['truck_type'], trucks_df['truck_max_weight']))
 max_veh_access = []
 for i in locations_df2.index:
     max_veh_access.append(cap_df[eval(locations_df2['trucks_allowed'][i])[-1]])
 max_veh_access = max_veh_access[len(order_list_df1):] + max_veh_access[:len(order_list_df1)]
-depot = locations_df.sort_values(by = 'location_code').iloc[len(order_list_df1):,:]
-Nodes = pd.concat([depot,customers], ignore_index = True)
-vehicles = [ k for k in range(0,len(Q1))]
-customers = [ i for i in range(1,len(Nodes))]
-nodes = [ i for i in range(0, len(Nodes))]
+depot = locations_df.sort_values(by='location_code').iloc[len(order_list_df1):, :]
+Nodes = pd.concat([depot, customers], ignore_index=True)
+vehicles = [k for k in range(0, len(Q1))]
+customers = [i for i in range(1, len(Nodes))]
+nodes = [i for i in range(0, len(Nodes))]
 demands_w = [0] + list(order_list_df1['Total Weight'])
 start_time = list(Nodes['start_minutes'])
 finish_time = list(Nodes['end_minutes'])
 dest2 = ['A123'] + sorted(dest)
-dest3 = {} 
+dest3 = {}
 for i in range(len(dest2)):
     dest3[dest2[i]] = i
-travel_matrix_df = travel_matrix_df[(travel_matrix_df['source_location_code'].isin(dest + ['A123'])) & (travel_matrix_df['destination_location_code'].isin(dest + ['A123']))]
+travel_matrix_df = travel_matrix_df[(travel_matrix_df['source_location_code'].isin(dest + ['A123'])) & (
+    travel_matrix_df['destination_location_code'].isin(dest + ['A123']))]
 travel_matrix_df['mapped_source'] = travel_matrix_df['source_location_code'].map(dest3)
 travel_matrix_df['mapped_destination'] = travel_matrix_df['destination_location_code'].map(dest3)
 dist_matrix = {}
 time_matrix = {}
 for i in travel_matrix_df.index:
-    dist_matrix[(travel_matrix_df['mapped_source'][i], travel_matrix_df['mapped_destination'][i])] = travel_matrix_df['travel_distance_in_km'][i]
-    time_matrix[(travel_matrix_df['mapped_source'][i], travel_matrix_df['mapped_destination'][i])] = travel_matrix_df['travel_time_in_min'][i]
+    dist_matrix[(travel_matrix_df['mapped_source'][i], travel_matrix_df['mapped_destination'][i])] = \
+    travel_matrix_df['travel_distance_in_km'][i]
+    time_matrix[(travel_matrix_df['mapped_source'][i], travel_matrix_df['mapped_destination'][i])] = \
+    travel_matrix_df['travel_time_in_min'][i]
 max_capacity_w = {v: Q1[v] for v in range(len(Q1))}
 best_solution, best_cost, cost_progress = tabu_search(
-    nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost, max_iter=45, tabu_tenure=10
+    nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost,
+    max_iter=45, tabu_tenure=10
 )
 
 # End measuring time
@@ -352,25 +364,33 @@ end_time = time.time()
 # Calculate and print runtime
 runtime = end_time - starting_time
 print(f"Runtime: {runtime:.2f} seconds")
+print('*'*50)
 # Display results
 print("Best Solution:")
 distance = []
+fcost = 0
 for v, route in best_solution.items():
     route_distance = sum(dist_matrix[route[i], route[i + 1]] for i in range(len(route) - 1))
     distance.append(route_distance)
-    print(f"Vehicle {v}: Route: {route}, Distance: {route_distance:.2f}")
+    print(f"Vehicle {v}: Route: {route}, Distance: {route_distance:.2f},fixed cost:{fixed_cost[v]}")
+    if route:    
+        fcost += fixed_cost[v]
 # print(f"Total Distance: {best_distance}")
 print(f"Total cost = {best_cost}")
 print(f"Total distance = {sum(distance)}")
-
+print('-'*75)
+print(f" Fixed Cost :{fcost}")
+print(f" Variable Cost :{best_cost - fcost}")
 
 # # Create a profile object
 # profiler = cProfile.Profile()
 
 # # Profile the code block
 # profiler.enable()
-# tabu_search(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost, max_iter=45, tabu_tenure=10)  # Call your connected functions
+# tabu_search(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost,
+#             max_iter=45, tabu_tenure=10)  # Call your connected functions
 # profiler.disable()
 
 # # Print profiling results
 # profiler.print_stats(sort='time')
+
