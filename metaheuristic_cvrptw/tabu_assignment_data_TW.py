@@ -8,56 +8,6 @@ import cProfile
 # Start measuring time
 starting_time = time.time()
 
-
-def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w):
-    s_t = time.time()
-    solution = {v: [] for v in vehicles}
-    remaining_demand_w = copy.deepcopy(demands_w)
-    unvisited = set(nodes[1:])  # Exclude depot
-
-    for v in vehicles:
-        current_node = 0  # Start at the depot
-        current_capacity_w = max_capacity_w[v]
-        route = [current_node]
-
-        while unvisited:
-            # Find the nearest node that satisfies all constraints
-            nearest_node = None
-            nearest_distance = float("inf")
-            for n in unvisited:
-                # Check if it satisfies the capacity constraint
-                if remaining_demand_w[n] <= current_capacity_w and dist_matrix[current_node, n] < nearest_distance:
-                    nearest_node = n
-                    nearest_distance = dist_matrix[current_node, n]
-
-            if nearest_node is None:
-                break  # No valid node found for this vehicle, end its route
-
-            # Add the nearest node to the route
-            route.append(nearest_node)
-            current_capacity_w -= remaining_demand_w[nearest_node]
-            remaining_demand_w[nearest_node] = 0
-            unvisited.remove(nearest_node)
-            current_node = nearest_node
-
-        route.append(0)  # Return to depot
-        solution[v] = route
-
-        # Stop if all customers have been visited
-        if not unvisited:
-            break
-
-    # Assign remaining unvisited nodes to any vehicle with capacity left
-    for n in unvisited:
-        for v in vehicles:
-            if remaining_demand_w[n] <= max_capacity_w[v]:
-                solution[v].insert(-1, n)  # Add before returning to depot
-                break
-    e_t = time.time()
-    run_time = e_t - s_t
-    print(f"Time for initial solution:{run_time} seconds")
-    return solution
-
 def is_valid_capacity(route, demands_w, max_capacity_w):
     total_weight = 0
     for node in route:
@@ -82,15 +32,8 @@ def is_valid_time_window(route, time_matrix, start_time, finish_time):
         if current_time > finish_time[next_node]:
             return False
     return True
+
 def is_valid_route(route, demands_w, max_capacity_w, time_matrix, start_time, finish_time):
-    # Check if the route starts and ends at the depot
-    if not route or route[0] != 0 or route[-1] != 0:
-        return False
-    
-    # Check for no depot visits in the middle of the route
-    if 0 in route[1:-1]:
-        return False
-    
     if not is_valid_capacity(route, demands_w, max_capacity_w):
         return False
 
@@ -103,6 +46,134 @@ def is_valid_route(route, demands_w, max_capacity_w, time_matrix, start_time, fi
     return True
 
 
+
+def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, time_matrix, start_time, finish_time):
+    s_t = time.time()
+    solution = {v: [] for v in vehicles}
+    remaining_demand_w = copy.deepcopy(demands_w)
+    unvisited = set(nodes[1:])  # Exclude depot
+
+    for v in vehicles:
+        current_node = 0  # Start at the depot
+        current_capacity_w = max_capacity_w[v]
+        current_time = 0  # Start at time 0
+        route = [current_node]
+
+        while unvisited:
+            # Find the nearest feasible node
+            nearest_node = None
+            nearest_distance = float("inf")
+            for n in unvisited:
+                # Check capacity and time window feasibility
+                if remaining_demand_w[n] <= current_capacity_w and dist_matrix[current_node, n] < nearest_distance:
+                    # Simulate arrival time
+                    arrival_time = current_time + time_matrix[current_node, n]
+                    if arrival_time <= finish_time[n]:
+                        nearest_node = n
+                        nearest_distance = dist_matrix[current_node, n]
+
+            if nearest_node is None:
+                break  # No valid node found for this vehicle, end its route
+
+            # Add the nearest node to the route
+            route.append(nearest_node)
+            current_capacity_w -= remaining_demand_w[nearest_node]
+            remaining_demand_w[nearest_node] = 0
+            unvisited.remove(nearest_node)
+            current_time += time_matrix[current_node, nearest_node]
+            if current_time < start_time[nearest_node]:  # Wait for the time window to open
+                current_time = start_time[nearest_node]
+            current_node = nearest_node
+
+        route.append(0)  # Return to depot
+        solution[v] = route
+
+        # Stop if all customers have been visited
+        if not unvisited:
+            break
+
+    # Assign remaining unvisited nodes to any vehicle with capacity left
+    for n in unvisited:
+        for v in vehicles:
+            if remaining_demand_w[n] <= max_capacity_w[v]:
+                solution[v].insert(-1, n)  # Add before returning to depot
+                break
+    e_t = time.time()
+    run_time = e_t - s_t
+    print(f"Time for initial solution: {run_time:.2f} seconds")
+    return solution
+# def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, time_matrix, start_time, finish_time):
+#     s_t = time.time()
+#     solution = {v: [0, 0] for v in vehicles}  # Initialize each vehicle route with depot start and end
+#     remaining_demand_w = copy.deepcopy(demands_w)
+#     unvisited = set(nodes[1:])  # Exclude depot
+
+#     # Step 1: Calculate savings for all pairs of customers
+#     savings = []
+#     for i in unvisited:
+#         for j in unvisited:
+#             if i != j:
+#                 saving = dist_matrix[0, i] + dist_matrix[0, j] - dist_matrix[i, j]
+#                 savings.append((saving, i, j))
+#     savings.sort(reverse=True, key=lambda x: x[0])  # Sort by savings in descending order
+
+#     # Step 2: Build routes using the savings
+#     routes = {n: [n] for n in unvisited}  # Initially, each customer is its own route
+#     capacities = {n: demands_w[n] for n in unvisited}
+
+#     for saving, i, j in savings:
+#         if i in routes and j in routes and routes[i] != routes[j]:
+#             # Check if merging routes is feasible
+#             if capacities[i] + capacities[j] <= max_capacity_w[max(vehicles, key=lambda v: max_capacity_w[v])]:
+#                 # Merge routes
+#                 if routes[i][-1] == i and routes[j][0] == j:
+#                     new_route = routes[i] + routes[j]
+#                 elif routes[j][-1] == j and routes[i][0] == i:
+#                     new_route = routes[j] + routes[i]
+#                 else:
+#                     continue
+
+#                 # Update routes and capacities
+#                 for node in new_route:
+#                     routes[node] = new_route
+#                 capacities[i] += capacities[j]
+#                 capacities[j] = capacities[i]
+
+#     # Step 3: Assign merged routes to vehicles
+#     vehicle_index = 0
+#     for route in set(tuple(r) for r in routes.values()):
+#         if vehicle_index >= len(vehicles):
+#             break
+
+#         # Ensure the route starts and ends at the depot
+#         full_route = [0] + list(route) + [0]
+
+#         # Check time window feasibility
+#         current_time = 0
+#         feasible = True
+#         for k in range(len(full_route) - 1):
+#             current_time += time_matrix[full_route[k], full_route[k + 1]]
+#             if current_time < start_time[full_route[k + 1]]:
+#                 current_time = start_time[full_route[k + 1]]
+#             if current_time > finish_time[full_route[k + 1]]:
+#                 feasible = False
+#                 break
+
+#         if feasible:
+#             solution[vehicles[vehicle_index]] = full_route
+#             vehicle_index += 1
+
+#     # Step 4: Assign remaining unvisited nodes to any vehicle with capacity left
+#     for n in unvisited:
+#         for v in vehicles:
+#             if sum(demands_w[node] for node in solution[v] if node != 0) + demands_w[n] <= max_capacity_w[v]:
+#                 solution[v].insert(-1, n)  # Add before returning to depot
+#                 break
+
+#     e_t = time.time()
+#     run_time = e_t - s_t
+#     print(f"Time for initial solution with savings algorithm: {run_time:.2f} seconds")
+#     return solution
 
 
 # def generate_neighbors(solution, vehicles, nodes, tabu_list, max_capacity_w, demands_w, dist_matrix):
@@ -181,6 +252,7 @@ def is_valid_route(route, demands_w, max_capacity_w, time_matrix, start_time, fi
 #     run_time = e_t - s_t
 #     print(f"Time for generating neighbors: {run_time:.4f} seconds")
 #     return neighbors
+
 def generate_neighbors(solution, vehicles, nodes, tabu_list, max_capacity_w, demands_w, dist_matrix):
     """
     Generate neighbors for the given solution using relocation, swap, 2-opt moves, 
@@ -297,6 +369,10 @@ def generate_neighbors(solution, vehicles, nodes, tabu_list, max_capacity_w, dem
     print(f"Time for generating neighbors: {run_time:.4f} seconds")
     return neighbors
 
+
+
+
+
 def calculate_total_distance(solution, dist_matrix):
     """
     Calculate the total distance for a given solution.
@@ -308,7 +384,6 @@ def calculate_total_distance(solution, dist_matrix):
                 dist_matrix[route[i], route[i + 1]] for i in range(len(route) - 1)
             )
     return total_distance
-
 
 def calculate_total_cost(solution, dist_matrix, Q1, var_cost, fixed_cost):
     # Store the previous solution and costs for incremental updates
@@ -358,182 +433,83 @@ def calculate_total_cost(solution, dist_matrix, Q1, var_cost, fixed_cost):
     
     return total_cost
 
+
 def tabu_search(
-        nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1, var_cost, fixed_cost, max_iter, tabu_tenure
+        nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1, var_cost, fixed_cost, max_iter, tabu_tenure,
+        time_matrix, start_time, finish_time
 ):
     """
-    Tabu Search with advanced LNS to escape local optima for minimizing total cost (fixed + variable) in a CVRPTW problem.
+    Tabu Search for minimizing total cost (fixed + variable) in a CVRPTW problem.
+    Includes a stopping criterion: if no improvement for 3 iterations, terminate the search early.
     """
-    def large_neighborhood_search(solution):
-        """
-        Perform an advanced perturbation on the solution by removing and reinserting customers.
-        Ensure new routes do not have repeated customers.
-        """
-        perturbed_solution = copy.deepcopy(solution)
+    st_time = time.time()
 
-        # Remove depot (0) from the start and end of each route
-        for v in perturbed_solution:
-            if perturbed_solution[v] and perturbed_solution[v][0] == 0:
-                perturbed_solution[v] = perturbed_solution[v][1:]
-            if perturbed_solution[v] and perturbed_solution[v][-1] == 0:
-                perturbed_solution[v] = perturbed_solution[v][:-1]
+    # Initialize
+    current_solution = initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, 
+                                           time_matrix, start_time, finish_time)
+    best_solution = current_solution
+    best_cost = calculate_total_cost(current_solution, dist_matrix, Q1, var_cost, fixed_cost)
+    tabu_list = []
+    tabu_queue = []
+    current_costs = []  # To store the current cost in each iteration
+    no_improvement_count = 0  # Counter for iterations without improvement
 
-        # Remove a subset of customers randomly
-        all_customers = [node for v in vehicles for node in perturbed_solution[v] if node != 0]
-        num_to_remove = max(1, len(all_customers) // 10)  # Remove 10% of customers
-        removed_customers = set(np.random.choice(all_customers, num_to_remove, replace=False))
+    for iteration in range(max_iter):
+        s_t = time.time()
 
-        # Remove customers from routes
-        for v in vehicles:
-            perturbed_solution[v] = [node for node in perturbed_solution[v] if node not in removed_customers]
+        # Generate neighbors
+        neighbors = generate_neighbors(
+            current_solution, vehicles, nodes, tabu_list, max_capacity_w, demands_w, dist_matrix
+        )
 
-        # Reinsert customers ensuring no duplicates
-        inserted_customers = set()
-        for customer in removed_customers:
-            best_vehicle, best_position, best_cost = None, None, float("inf")
-            for v in vehicles:
-                if sum(demands_w[node] for node in perturbed_solution[v]) + demands_w[customer] > max_capacity_w[v]:
-                    continue
-
-                for pos in range(len(perturbed_solution[v]) + 1):
-                    new_route = perturbed_solution[v][:]
-                    new_route.insert(pos, customer)
-
-                    if customer in new_route[:pos] or customer in new_route[pos + 1:]:
-                        continue  # Skip if adding creates a duplicate
-
-                    new_cost = sum(
-                        dist_matrix[new_route[i], new_route[i + 1]] for i in range(len(new_route) - 1)
-                    )
-                    if new_cost < best_cost:
-                        best_vehicle, best_position, best_cost = v, pos, new_cost
-
-            if best_vehicle is not None:
-                perturbed_solution[best_vehicle].insert(best_position, customer)
-                inserted_customers.add(customer)
-
-        # Add remaining uninserted customers to least-loaded vehicles
-        uninserted_customers = removed_customers - inserted_customers
-        for customer in uninserted_customers:
-            for v in vehicles:
-                if sum(demands_w[node] for node in perturbed_solution[v]) + demands_w[customer] <= max_capacity_w[v]:
-                    perturbed_solution[v].append(customer)
-                    break
-
-        # Re-add the depot (0) at the start and end of each route
-        for v in perturbed_solution:
-            if perturbed_solution[v]:
-                perturbed_solution[v] = [0] + perturbed_solution[v] + [0]
-            else:
-                perturbed_solution[v] = [0, 0]
-
-        return perturbed_solution
-
-    def run_tabu_search(initial_solution, max_iter):
-        """Run the core Tabu Search logic."""
-        current_solution = initial_solution
-        best_solution = current_solution
-        best_cost = calculate_total_cost(current_solution, dist_matrix, Q1, var_cost, fixed_cost)
-        tabu_list = []
-        tabu_queue = []
-        current_costs = []
-
-        no_improvement_count = 0
-
-        for iteration in range(max_iter):
-            s_t = time.time()
-
-            # Generate neighbors
-            neighbors = generate_neighbors(
-                current_solution, vehicles, nodes, tabu_list, max_capacity_w, demands_w, dist_matrix
+        # Evaluate neighbors based on total cost
+        best_neighbor = None
+        best_neighbor_cost = float("inf")
+        for neighbor in neighbors:
+            # Validate neighbor feasibility with time window constraints
+            feasible = all(
+                is_valid_route(neighbor[v], demands_w, max_capacity_w[v], time_matrix, start_time, finish_time)
+                for v in vehicles
             )
 
-            # Evaluate neighbors based on total cost
-            best_neighbor = None
-            best_neighbor_cost = float("inf")
-            for neighbor in neighbors:
+            if feasible:
                 neighbor_cost = calculate_total_cost(neighbor, dist_matrix, Q1, var_cost, fixed_cost)
                 if neighbor_cost < best_neighbor_cost:
                     best_neighbor = neighbor
                     best_neighbor_cost = neighbor_cost
-            # Check for improvement
-            if best_neighbor and best_neighbor_cost < best_cost:
-                current_solution = best_neighbor
-                best_cost = best_neighbor_cost
-                best_solution = current_solution
-                no_improvement_count = 0
-            else:
-                no_improvement_count += 1
 
-            # Apply diversification and terminate if no improvement for 3 iterations
-            if no_improvement_count >= 3:
-                print("No improvement for 3 iterations, applying diversification.")
-                return large_neighborhood_search(current_solution), best_cost, current_costs
+        # Update current solution if a better neighbor is found
+        if best_neighbor and best_neighbor_cost < best_cost:
+            current_solution = best_neighbor
+            best_cost = best_neighbor_cost
+            best_solution = current_solution
+            no_improvement_count = 0 
+        else:
+            no_improvement_count += 1
 
-            # Update tabu list
-            tabu_list.append(current_solution)
-            if len(tabu_queue) >= tabu_tenure:
-                tabu_list.remove(tabu_queue.pop(0))
-            tabu_queue.append(current_solution)
+        # Early stopping condition
+        if no_improvement_count >= 3:
+            print(f"Stopping early: No improvement in the last 3 iterations.")
+            break
 
-            # Record current cost
-            current_costs.append(best_cost)
+        # Update tabu list
+        tabu_list.append(current_solution)
+        if len(tabu_queue) >= tabu_tenure:
+            tabu_list.remove(tabu_queue.pop(0))
+        tabu_queue.append(current_solution)
 
-            e_t = time.time()
-            run_time = e_t - s_t
-            print(f"Iteration {iteration + 1}, Current Cost: {best_cost}, Time for this iteration: {run_time:.2f} seconds")
+        # Record current cost
+        current_costs.append(best_cost)
 
-        return best_solution, best_cost, current_costs
-
-    st_time = time.time()
-
-    # Initialize
-    current_solution = initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w)
-    best_solution = current_solution
-    best_cost = calculate_total_cost(current_solution, dist_matrix, Q1, var_cost, fixed_cost)
-    all_solutions = []
-    all_cost_values = []
-
-    # Apply Tabu Search for the initial solution
-    print("Running initial Tabu Search...")
-    initial_solution, initial_cost, costs = run_tabu_search(current_solution, max_iter)
-    all_solutions.append(initial_solution)
-    all_cost_values.append(initial_cost)
-
-    print(f"Initial solution cost: {initial_cost}")
-
-    # Diversification and Tabu Search on perturbed solutions
-    diversification_count = 5
-
-    for i in range(diversification_count):
-        print(f"Diversification Round {i + 1}...")
-        perturbed_solution = large_neighborhood_search(initial_solution)
-
-        print(f"Cost after LNS: {calculate_total_cost(perturbed_solution, dist_matrix, Q1, var_cost, fixed_cost)}")
-
-        # Apply Tabu Search on the new solution for 60 iterations
-        perturbed_solution, perturbed_cost, costs = run_tabu_search(perturbed_solution, 60)
-        all_solutions.append(perturbed_solution)
-        all_cost_values.append(perturbed_cost)
+        e_t = time.time()
+        run_time = e_t - s_t
+        print(f"Iteration {iteration + 1}, Current Cost: {best_cost}, Time for this iteration: {run_time:.2f} seconds")
 
     en_time = time.time()
     total_time = en_time - st_time
-
     print(f"Total time in Tabu Search: {total_time:.2f} seconds")
 
-    # Print all solutions and their costs
-    print("\nAll Solutions and Their Costs:")
-    for i, (solution, cost) in enumerate(zip(all_solutions, all_cost_values), start=1):
-        print(f"Solution {i}: Cost = {cost}")
-        for v, route in solution.items():
-            print(f"  Vehicle {v}: Route: {route}")
-        print("-" * 50)
-
-    return all_solutions, all_cost_values
-
-
-
-
+    return best_solution, best_cost, current_costs
 
 # Load data
 locations_df = pd.read_csv("C:/Users/Acer/Documents/GitHub/Tabu-Search-for-CVRPTW/inputs/locations.csv")
@@ -590,12 +566,9 @@ for i in travel_matrix_df.index:
     time_matrix[(travel_matrix_df['mapped_source'][i], travel_matrix_df['mapped_destination'][i])] = \
     travel_matrix_df['travel_time_in_min'][i]
 max_capacity_w = {v: Q1[v] for v in range(len(Q1))}
-
-
-
-best_solution, best_cost = tabu_search(
+best_solution, best_cost, cost_progress = tabu_search(
     nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost,
-    max_iter=100, tabu_tenure=10
+    max_iter=100, tabu_tenure=10, time_matrix=time_matrix, start_time=start_time, finish_time=finish_time
 )
 
 # End measuring time
@@ -605,26 +578,34 @@ end_time = time.time()
 runtime = end_time - starting_time
 print(f"Runtime: {runtime:.2f} seconds")
 print('*'*50)
-# # Display results
-# print("Best Solution:")
-# distance = []
-# for v, route in best_solution.items():
-#     route_distance = sum(dist_matrix[route[i], route[i + 1]] for i in range(len(route) - 1))
-#     distance.append(route_distance)
-#     print(f"Vehicle {v}: Route: {route}, Distance: {route_distance:.2f}")
-# # print(f"Total Distance: {best_distance}")
-# print(f"Total cost = {best_cost}")
-# print(f"Total distance = {sum(distance)}")
-# print('-'*75)
-# # Create a profile object
-# profiler = cProfile.Profile()
+# Display results
+print("Best Solution:")
+distance = []
+fcost = 0
+for v, route in best_solution.items():
+    route_distance = sum(dist_matrix[route[i], route[i + 1]] for i in range(len(route) - 1))
+    route_time = sum(time_matrix[route[i], route[i + 1]] for i in range(len(route) - 1))
+    distance.append(route_distance)
+    print(f"Vehicle {v}: Route: {route}, Distance: {route_distance:.2f}, Time: {route_time:.2f}, fixed cost:{fixed_cost[v]}")
+    if len(route)>2:    
+        fcost += fixed_cost[v]
+# print(f"Total Distance: {best_distance}")
+print(f"Total cost = {best_cost}")
+print(f"Total distance = {sum(distance)}")
+print('-'*75)
+print(f" Fixed Cost :{fcost}")
+print(f" Variable Cost :{best_cost - fcost}")
 
-# # Profile the code block
-# profiler.enable()
-# tabu_search(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost,
-#             max_iter=45, tabu_tenure=10)  # Call your connected functions
-# profiler.disable()
+profiler = cProfile.Profile()
 
-# # Print profiling results
-# profiler.print_stats(sort='time')
+# Profile the code block
+profiler.enable()
+tabu_search(
+    nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost,
+    max_iter=100, tabu_tenure=10, time_matrix=time_matrix, start_time=start_time, finish_time=finish_time
+)
+ # Call your connected functions
+profiler.disable()
 
+# Print profiling results
+profiler.print_stats(sort='time')
