@@ -70,11 +70,13 @@ def print_solution(data, manager, routing, solution):
             dropped_nodes += f" {manager.IndexToNode(node)}"
             dropped_nodes_list.append(manager.IndexToNode(node))
 
-
+    fixed_cost_sum = 0
+    var_cost_sum = 0
     for vehicle_id in range(data["num_vehicles"]):
         index = routing.Start(vehicle_id)
         plan_output = f"Route for vehicle {vehicle_id}:\n"
-        route_distance = 0
+        print(f"Fixed cost: {fixed_cost[vehicle_id]}")
+        route_cost = 0
         route_load = 0
         route_nodes = []
         while not routing.IsEnd(index):
@@ -84,14 +86,21 @@ def print_solution(data, manager, routing, solution):
             route_nodes.append(node_index)
             previous_index = index
             index = solution.Value(routing.NextVar(index))
-            route_distance += routing.GetArcCostForVehicle(
+            route_cost += routing.GetArcCostForVehicle(
                 previous_index, index, vehicle_id
             )
         plan_output += f" {manager.IndexToNode(index)} Load({route_load})\n"
         route_nodes.append(manager.IndexToNode(index))
-        plan_output += f"Distance of the route: {route_distance}m\n"
+        plan_output += f"Cost of the route: {route_cost}\n"
+        var_cost_sum += route_cost
+        if route_cost > 0:
+            fixed_cost_sum += fixed_cost[vehicle_id]
         plan_output += f"Load of the route: {route_load}\n"
         print(plan_output)
+    total = fixed_cost_sum + var_cost_sum
+    print(f"Total fixed cost: {fixed_cost_sum}")
+    print(f"Total variable cost: {var_cost_sum}")
+    print(f"Total cost: {total}")
 
 
 def main():
@@ -116,7 +125,7 @@ def main():
     # Add capacity constraints
     def demand_callback(from_index):
         from_node = manager.IndexToNode(from_index)
-        return data['demands'][from_node]
+        return int(data['demands'][from_node])
 
     demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
     routing.AddDimensionWithVehicleCapacity(
@@ -137,7 +146,7 @@ def main():
     routing.AddDimension(
         time_callback_index,
         1440,  
-        144000,  
+        1440,  
         False,
         'Time'
     )
@@ -145,7 +154,7 @@ def main():
     
 
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-    search_parameters.time_limit.seconds = 30
+    search_parameters.time_limit.seconds = 200
     search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
     search_parameters.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
 
