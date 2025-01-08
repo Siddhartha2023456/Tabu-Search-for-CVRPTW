@@ -527,6 +527,7 @@ def tabu_search(
         print(f"Solution {i}: Cost = {cost}")
         for v, route in solution.items():
             print(f"  Vehicle {v}: Route: {route}")
+            
         print("-" * 50)
 
     return all_solutions, all_cost_values

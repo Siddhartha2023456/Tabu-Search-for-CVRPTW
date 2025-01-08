@@ -13,7 +13,7 @@ def is_valid_capacity(route, demands_w, max_capacity_w):
     for node in route:
         if node != 0:  # Exclude depot
             total_weight += demands_w[node]
-            if total_weight > max_capacity_w:
+            if total_weight > int(max_capacity_w):
                 return False
     return True
 
@@ -566,6 +566,8 @@ for i in travel_matrix_df.index:
     time_matrix[(travel_matrix_df['mapped_source'][i], travel_matrix_df['mapped_destination'][i])] = \
     travel_matrix_df['travel_time_in_min'][i]
 max_capacity_w = {v: Q1[v] for v in range(len(Q1))}
+print(len(nodes))
+print(len(demands_w))
 best_solution, best_cost, cost_progress = tabu_search(
     nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost,
     max_iter=100, tabu_tenure=10, time_matrix=time_matrix, start_time=start_time, finish_time=finish_time
@@ -596,16 +598,41 @@ print('-'*75)
 print(f" Fixed Cost :{fcost}")
 print(f" Variable Cost :{best_cost - fcost}")
 
-profiler = cProfile.Profile()
+# profiler = cProfile.Profile()
 
-# Profile the code block
-profiler.enable()
-tabu_search(
-    nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost,
-    max_iter=100, tabu_tenure=10, time_matrix=time_matrix, start_time=start_time, finish_time=finish_time
-)
- # Call your connected functions
-profiler.disable()
+# # Profile the code block
+# profiler.enable()
+# tabu_search(
+#     nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost,
+#     max_iter=100, tabu_tenure=10, time_matrix=time_matrix, start_time=start_time, finish_time=finish_time
+# )
+#  # Call your connected functions
+# profiler.disable()
 
-# Print profiling results
-profiler.print_stats(sort='time')
+# # Print profiling results
+# profiler.print_stats(sort='time')
+# print("Best Solution:")
+# distance = []
+# fcost = 0
+# for v, route in best_solution.items():
+#     route_distance = sum(dist_matrix[route[i], route[i + 1]] for i in range(len(route) - 1))
+#     route_time = sum(time_matrix[route[i], route[i + 1]] for i in range(len(route) - 1))
+#     distance.append(route_distance)
+#     print(f"Vehicle {v}:")
+#     current_time = 0  # Start time for the vehicle
+#     for i in range(len(route) - 1):
+#         location = route[i]
+#         next_location = route[i + 1]
+#         travel_time = time_matrix[location, next_location]
+#         current_time += travel_time
+#         if current_time < start_time[next_location]:
+#             current_time = start_time[next_location]  # Wait for time window to open
+#         print(f"  Location {location}: Arrival Time: {current_time} minutes")
+#     print(f"  Route: {route}, Distance: {route_distance:.2f}, Time: {route_time:.2f}, Fixed Cost: {fixed_cost[v]}")
+#     if len(route) > 2:
+#         fcost += fixed_cost[v]
+# print(f"Total cost = {best_cost}")
+# print(f"Total distance = {sum(distance)}")
+# print('-' * 75)
+# print(f" Fixed Cost :{fcost}")
+# print(f" Variable Cost :{best_cost - fcost}")

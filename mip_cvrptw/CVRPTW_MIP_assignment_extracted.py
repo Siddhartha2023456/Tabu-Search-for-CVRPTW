@@ -201,9 +201,11 @@ for vehicle, route in remapped_routes.items():
 
 my_model.setParam('Heuristics', 0.6)  
 my_model.setParam('MIPGap', 0.35)  
+my_model.write("CVRPTW_model.mps")
+print("Optimization done")
+# my_model.optimize()
 
 
-my_model.optimize()
 
 # Create a new dictionary to store non-zero values
 non_zero_xijk = {}
