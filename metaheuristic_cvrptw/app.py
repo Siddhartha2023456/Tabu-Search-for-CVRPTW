@@ -3,16 +3,35 @@ import pandas as pd
 import numpy as np
 import time
 from tabu_assignment_data import tabu_search
+import streamlit as st
 
-# Streamlit app
-st.title("Tabu Search Optimization")
+# Title
+st.title("In-house Algorithm")
 
-# Sidebar for inputs
 st.sidebar.header("Input Parameters")
-uploaded_file = st.sidebar.file_uploader("Upload Data File (Excel with 4 Sheets)", type="xlsx")
+
+# File uploader for either Excel or JSON
+file_type = st.sidebar.radio("Select File Type", options=["Excel", "JSON"], index=0)
+
+if file_type == "Excel":
+    uploaded_file = st.sidebar.file_uploader("Upload Data File (Excel with 4 Sheets)", type="xlsx")
+elif file_type == "JSON":
+    uploaded_file = st.sidebar.file_uploader("Upload Data File (JSON)", type="json")
+
+# Other input parameters
 max_iterations = st.sidebar.number_input("Max Iterations", min_value=1, max_value=10000, value=100)
 no_improvement_count = st.sidebar.number_input("No Improvement Count", min_value=1, max_value=100, value=3)
 tabu_tenure = st.sidebar.number_input("Tabu Tenure", min_value=1, max_value=100, value=10)
+
+# Process the uploaded file
+if uploaded_file:
+    if file_type == "Excel":
+        st.write("Uploaded Excel file:", uploaded_file.name)
+        # Add logic to process Excel file
+    elif file_type == "JSON":
+        st.write("Uploaded JSON file:", uploaded_file.name)
+        # Add logic to process JSON file
+
 
 if uploaded_file:
     try:
@@ -51,7 +70,6 @@ if uploaded_file:
         locations_df = locations_df[locations_df['location_code'].isin(dest + ['A123'])]
         locations_df['start_minutes'] = pd.to_datetime(locations_df['location_loading_unloading_window_start'], format='%H:%M:%S').dt.hour * 60 + pd.to_datetime(locations_df['location_loading_unloading_window_start'], format='%H:%M:%S').dt.minute
         locations_df['end_minutes'] = pd.to_datetime(locations_df['location_loading_unloading_window_end'], format='%H:%M:%S').dt.hour * 60 + pd.to_datetime(locations_df['location_loading_unloading_window_end'], format='%H:%M:%S').dt.minute
-        st.write("halfway reached")
         customers = locations_df.sort_values(by='location_code').iloc[:len(order_list_df1), :]
         locations_df2 = locations_df.sort_values(by='location_code')
         cap_df = dict(zip(trucks_df['truck_type'], trucks_df['truck_max_weight']))
@@ -116,10 +134,10 @@ if uploaded_file:
                 for j in nodes:
                     if (i, j) not in dist_matrix:
                         st.warning(f"Missing distance for nodes {i} and {j}") # Assign a large distance for missing
-            st.write("All dataset is correct.")
-            with st.spinner("Running Tabu Search..."):
+            
+            with st.spinner("Running the algorithm for route planning..."):
                 start_time = time.time()
-                best_solution, best_cost, cost_progress = tabu_search(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost,max_iter=max_iterations, tabu_tenure=10)
+                best_solution, best_cost, cost_progress = tabu_search(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost,max_iter=max_iterations, tabu_tenure=10,threshold=no_improvement_count)
                 end_time = time.time()
 
                 # Display Results

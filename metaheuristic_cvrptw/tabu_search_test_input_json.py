@@ -2,7 +2,7 @@ import json
 import pandas as pd
 import copy
 import time
-
+import math
 # Start measuring time
 starting_time = time.time()
 # def initialize_solution(nodes, vehicles, dist_matrix, demands_w, demands_v, max_capacity_w, max_capacity_v):
@@ -60,8 +60,8 @@ def initialize_solution(nodes, vehicles, dist_matrix, demands_w, demands_v, max_
     1. Maximum number of customers in a route = 2
     2. Maximum distance between consecutive customers (excluding depot) = 100 Km
     """
-    max_customers_per_route = 3  # Constraint 1
-    max_distance_between_customers = 100  # Constraint 2
+    # max_customers_per_route = 3  # Constraint 1
+    # max_distance_between_customers = 100  # Constraint 2
 
     solution = {v: [] for v in vehicles}
     remaining_demand_w = copy.deepcopy(demands_w)
@@ -84,12 +84,9 @@ def initialize_solution(nodes, vehicles, dist_matrix, demands_w, demands_v, max_
                 if (
                     remaining_demand_w[n] <= current_capacity_w and
                     remaining_demand_v[n] <= current_capacity_v and
-                    dist_matrix[current_node, n] < nearest_distance and
-                    customer_count < max_customers_per_route
+                    dist_matrix[current_node, n] < nearest_distance
                 ):
-                    # Apply distance constraint only for customer-to-customer moves
-                    if len(route) > 1 and dist_matrix[route[-1], n] > max_distance_between_customers:
-                        continue
+                    
                     nearest_node = n
                     nearest_distance = dist_matrix[current_node, n]
 
@@ -193,10 +190,8 @@ def calculate_total_cost(solution, dist_matrix, fixed_cost, variable_cost):
     total_variable_cost = 0
 
     for v, route in solution.items():
-        if len(route) > 1:  # Ignore empty routes
-            for i in range(len(route)-1):
-                total_fixed_cost += fixed_cost[route[i], v]  # Fixed cost for the vehicle
-
+        if len(route) > 2:  # Ignore empty routes
+            total_fixed_cost += fixed_cost[v]
             total_variable_cost += sum(
                 dist_matrix[route[i], route[i + 1]] * variable_cost[v]
                 for i in range(len(route) - 1)
@@ -265,7 +260,7 @@ def tabu_search(nodes, vehicles, dist_matrix, demands_w, demands_v, max_capacity
 
 
 # Example Usage
-file_path = 'inputs/solver_params_26.json'
+file_path = "inputs/ncubate_request.json"
 with open(file_path, 'r') as file:
     data = json.load(file)
 # DATA ANALYSIS
@@ -279,12 +274,32 @@ duration_matrix = data["durations"]
 max_veh_weight = data["max_weight"]
 max_veh_volume = data["max_volume"]
 time_windows = data["timeWindows"]
-fixed_cost_matrix = data["vehicle_base_fare_matrix"]
+fixed_cost_list = data["max_weight"]
+total_order_weights = sum(df_orders_f["order_weight"])
+total_order_volume = sum(df_orders_f["order_volume"])
+copy_max_wt = []
+copy_max_vol = []
+copy_fixed_cost_list = []
+per_km_cost_list = data["perKmCostPerVehicle"]
+copy_per_km_cost_list = []
+for i in range(len(max_veh_weight)):
+    num_veh_weight = math.ceil(total_order_weights / max_veh_weight[i])
+    num_veh_volume = math.ceil(total_order_volume / max_veh_volume[i])
+    num_veh = max(num_veh_weight, num_veh_volume) * 2
+    for j in range(num_veh):
+        copy_max_wt.append(max_veh_weight[i])
+        copy_max_vol.append(max_veh_volume[i])
+        copy_fixed_cost_list.append(int(fixed_cost_list[i]))
+        copy_per_km_cost_list.append(per_km_cost_list[i])
 start_time = [i for i, j in time_windows]
 finish_time = [j for i, j in time_windows]
 nodes = list(loc_id_mapping.values())
 depot = 0
 customers = nodes[1:]
+for i in range(len(distance_matrix)):
+    for j in range(len(distance_matrix[i])):
+        if i ==0 or j == 0:
+            distance_matrix[i][j] = 0
 dist_matrix = {
     (i, j): distance_matrix[i][j]
     for i in range(len(distance_matrix))
@@ -295,23 +310,18 @@ time_matrix = {
     for i in range(len(duration_matrix))
     for j in range(len(duration_matrix[i]))
 }
-fixed_cost = {
-    (i, j): fixed_cost_matrix[i][j]
-    for i in range(len(fixed_cost_matrix))
-    for j in range(len(fixed_cost_matrix[i]))
-}
+
 df_vehicle = pd.DataFrame([max_veh_weight,max_veh_volume]).transpose().reset_index()
 df_vehicle.columns = ["v_id","max_weight","max_volume"]
-vehicles = list(df_vehicle["v_id"])
+vehicles = [i for i in range(len(copy_max_wt))]
 demand_w = list(df_orders_f["order_weight"])
 demand_v = list(df_orders_f["order_volume"])
 max_vehw =list(df_vehicle["max_weight"])
 max_vehv =list(df_vehicle["max_volume"])
 variable_cost = list(data["perKmCostPerVehicle"])
-variable_cost
 # demands = demand_w
-max_capacity_w = {v: max_vehw[v] for v in vehicles}
-max_capacity_v = {v: max_vehv[v] for v in vehicles}
+max_capacity_w = {v: copy_max_wt[v] for v in vehicles}
+max_capacity_v = {v: copy_max_vol[v] for v in vehicles}
 
 # Run Tabu Search
 best_solution, best_cost, best_fixed_cost, best_variable_cost, best_distance, current_costs = tabu_search(
@@ -322,25 +332,38 @@ best_solution, best_cost, best_fixed_cost, best_variable_cost, best_distance, cu
     demands_v=demand_v,
     max_capacity_w=max_capacity_w,
     max_capacity_v=max_capacity_v,
-    fixed_cost=fixed_cost,
-    variable_cost=variable_cost,
-    max_iter=10,
+    fixed_cost=copy_fixed_cost_list,
+    variable_cost=copy_per_km_cost_list,
+    max_iter=30,
     tabu_tenure=10,
 )
+unique_costs = sorted(set(fixed_cost_list))
 
+# Map each unique cost to an index (1-based)
+cost_to_index = {cost: idx for idx, cost in enumerate(unique_costs)}
+index_to_cost = {idx: cost for cost, idx in cost_to_index.items()}
+print(cost_to_index)
+# Generate the list of indices corresponding to the fixed costs
+indices = [cost_to_index[cost] for cost in copy_fixed_cost_list]
 # End measuring time
 end_time = time.time()
-
+print(f"Number of nodes: {len(nodes)}")
 # Calculate and print runtime
 runtime = end_time - starting_time
 print(f"Runtime: {runtime:.2f} seconds")
 # Display results
 print("Best Solution:")
+i = 0
 for v, route in best_solution.items():
     route_distance = sum(dist_matrix[route[i], route[i + 1]] for i in range(len(route) - 1))
-    print(f"Vehicle {v}: Route: {route}, Distance: {route_distance:.2f}")
+    if len(route)>2:
+        i += 1
+        t = len(route)
+        print(f"Route: {i},Vehicle Type: {indices[v]},\nLocation Sequence: {route[1:t-1]},\nDistance: {route_distance}, Fixed Cost: {copy_fixed_cost_list[v]}, Per Km Cost: {route_distance * copy_per_km_cost_list[v]}\nRoute Cost: {route_distance * copy_per_km_cost_list[v] + copy_fixed_cost_list[v]}")
+        print("-" * 50)
 print(f"Best Total Cost: {best_cost}")
 print(f"Fixed Cost: {best_fixed_cost}")
 print(f"Variable Cost: {best_variable_cost}")
 print(f"Total Distance: {best_distance}")
+print(f"Vehicle Type with fixed cost: {index_to_cost}")
 

@@ -1,13 +1,14 @@
 import json
 import math
 import random
-
-random.seed(1503)
-
 import numpy as np
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 from itertools import groupby
+
+random.seed(1503)
+
+
 
 
 def prep_data(solver_data):
@@ -73,7 +74,7 @@ def prep_data(solver_data):
     for i in range(len(max_weight_gram)):
         num_veh_weight = math.ceil(total_order_weights / max_weight_gram[i])
         num_veh_volume = math.ceil(total_order_volume / max_volume_inch[i])
-        num_veh = max(num_veh_weight, num_veh_volume) * 2
+        num_veh = max(num_veh_weight, num_veh_volume)
         for j in range(num_veh):
             copy_max_weight_gram.append(max_weight_gram[i])
             copy_max_volume_inch.append(max_volume_inch[i])
@@ -102,8 +103,7 @@ def prep_data(solver_data):
     data['optimization_option'] = solver_data['optimization_option']
     data['base_fare'] = base_fare_dict
     data['hop_fare'] = hop_fare
-    print(data['num_vehicles'])
-    print(data["fixed_costs"])
+
     return data
 
 
@@ -205,12 +205,8 @@ def get_solution(data, manager, routing, assignment):
     return routes_json
 
 
-def get_best_routes(solver_params):
-    model_data = prep_data(solver_params)
-
-    # Instantiate the data problem.
-    data = create_data_model(model_data)
-
+def get_best_routes(data):
+    
     # Create the routing index manager.
     manager = pywrapcp.RoutingIndexManager(
         len(data["distance_matrix"]), data["num_vehicles"], data["depot"]
@@ -236,17 +232,17 @@ def get_best_routes(solver_params):
             if from_loc_id != to_loc_id:
                 hop_cost_val += hop_cost
 
-        return int(data['cost_per_km'][veh_id] * distance)
+        return int(data['cost_per_km'][veh_id] * 50 * distance) + hop_cost_val
 
-    # def travel_time_callback(from_index, to_index):
-    #     from_node = manager.IndexToNode(from_index)
-    #     to_node = manager.IndexToNode(to_index)
-    #     return data["time_matrix"][from_node][to_node]
-    #
-    # def distance_callback(from_index, to_index):
-    #     from_node = manager.IndexToNode(from_index)
-    #     to_node = manager.IndexToNode(to_index)
-    #     return data["distance_matrix"][from_node][to_node]
+    def travel_time_callback(from_index, to_index):
+        from_node = manager.IndexToNode(from_index)
+        to_node = manager.IndexToNode(to_index)
+        return data["time_matrix"][from_node][to_node]
+
+    def distance_callback(from_index, to_index):
+        from_node = manager.IndexToNode(from_index)
+        to_node = manager.IndexToNode(to_index)
+        return data["distance_matrix"][from_node][to_node]
 
     for vehicle_id in range(data['num_vehicles']):
         vehicle_cost_callback_index = routing.RegisterTransitCallback(
@@ -294,54 +290,17 @@ def get_best_routes(solver_params):
         "Volume_Capacity",
     )
 
-    def is_same_location_id_callback(from_index, to_index):
-        from_node = manager.IndexToNode(from_index)
-        to_node = manager.IndexToNode(to_index)
-        is_same = data['order_loc_index'][from_node] == data['order_loc_index'][to_node]
-        cost = 0 if is_same else 1
-        return cost
-
-    max_stops_per_vehicle = 100
-    is_same_location_callback_index = routing.RegisterTransitCallback(is_same_location_id_callback)
-    routing.AddDimensionWithVehicleCapacity(
-        is_same_location_callback_index,
-        0,
-        [max_stops_per_vehicle + 1] * manager.GetNumberOfVehicles(),
-        # maximum  number of stops allowed for each vehicle
-        True,
-        "Max_Locations",
-    )
-
-    max_dist_customer_visits = 1000000
-
-    def distance_constraint_callback(from_index, to_index):
-        from_node = manager.IndexToNode(from_index)
-        to_node = manager.IndexToNode(to_index)
-        cost = data['distance_matrix'][from_node][to_node]
-        if data['distance_matrix'][from_node][to_node] <= max_dist_customer_visits or from_node == 0:
-            cost = 0
-        return cost
-
-    max_distance_callback_index = routing.RegisterTransitCallback(distance_constraint_callback)
-    routing.AddDimensionWithVehicleCapacity(
-        max_distance_callback_index,
-        0,
-        [max_dist_customer_visits] * manager.GetNumberOfVehicles(),
-        True,
-        "Max_Distance_Between_Visits"
-    )
-
     # # Allow to drop nodes.
-    penalty = 10 ** 9
-    for node in range(1, len(data["distance_matrix"])):
-        routing.AddDisjunction([manager.NodeToIndex(node)], penalty)
+    # penalty = 9999999
+    # for node in range(1, len(data["distance_matrix"])):
+    #     routing.AddDisjunction([manager.NodeToIndex(node)], penalty)
 
     # -----------------------------------------------------------------------------------------
     # Solve
     # Setting first solution heuristic.
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     search_parameters.first_solution_strategy = (
-        routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION  # PATH_CHEAPEST_ARC PARALLEL_CHEAPEST_INSERTION CHRISTOFIDES
+        routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
     )
     search_parameters.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
@@ -352,21 +311,8 @@ def get_best_routes(solver_params):
     # Solve the problem.
     assignment = routing.SolveWithParameters(search_parameters)
 
-    def get_dropped_nodes(manager, routing, assignment):
-        # List to store the indexes of dropped nodes
-        dropped_nodes = []
-        for node in range(1, len(data["distance_matrix"])):  # Assuming 0 is the depot and is not droppable
-            index = manager.NodeToIndex(node)
-            if assignment.Value(routing.NextVar(index)) == index:
-                dropped_nodes.append(node)
-        return dropped_nodes
-
-    # After solving the problem
     if assignment:
-        print(f"Objective Value (Total Cost): {assignment.ObjectiveValue()}")
-        dropped_nodes = get_dropped_nodes(manager, routing, assignment)
         routes_json = get_solution(data, manager, routing, assignment)
-        return routes_json, dropped_nodes
-    else:
-        print("No solution found.")
-        return [], []
+        return routes_json
+
+    return []

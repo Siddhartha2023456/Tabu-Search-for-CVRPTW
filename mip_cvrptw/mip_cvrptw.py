@@ -3,7 +3,7 @@ import json
 import pandas as pd
 import gurobipy as gp
 from gurobipy import *
-file_path = 'inputs/solver_params_26.json'
+file_path = 'inputs/QA_test_case_solver_params (1).json'
 with open(file_path, 'r') as file:
     data = json.load(file)
 # DATA ANALYSIS
@@ -107,14 +107,14 @@ my_model.addConstrs(
     sik[i, k] + wtik[i, k] <= finish_time[i] for i in nodes for k in vehicles
 )
 
-# MAX NO. OF CUSTOMER IN A ROUTE==2
-my_model.addConstrs(gp.quicksum(xijk[i,j,k] for i in nodes for j in nodes)<=4 for k in vehicles)
-# maximum distance between two customers = 100 Km
-max_distance = 100
-my_model.addConstrs(
-    dist_matrix[i, j] * xijk[i, j, k] <= max_distance
-    for i in customers for j in customers for k in vehicles
-)
+# # MAX NO. OF CUSTOMER IN A ROUTE==2
+# my_model.addConstrs(gp.quicksum(xijk[i,j,k] for i in nodes for j in nodes)<=4 for k in vehicles)
+# # maximum distance between two customers = 100 Km
+# max_distance = 100
+# my_model.addConstrs(
+#     dist_matrix[i, j] * xijk[i, j, k] <= max_distance
+#     for i in customers for j in customers for k in vehicles
+# )
 my_model.addConstrs(wtik[i, k] >= 0 for i in nodes for k in vehicles)
 my_model.optimize()
 ####################################################################

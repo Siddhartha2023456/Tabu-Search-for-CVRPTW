@@ -92,16 +92,17 @@ def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w,
         if not unvisited:
             break
 
-    # Assign remaining unvisited nodes to any vehicle with capacity left
-    for n in unvisited:
-        for v in vehicles:
-            if remaining_demand_w[n] <= max_capacity_w[v]:
-                solution[v].insert(-1, n)  # Add before returning to depot
-                break
+    # # Assign remaining unvisited nodes to any vehicle with capacity left
+    # for n in unvisited:
+    #     for v in vehicles:
+    #         if remaining_demand_w[n] <= max_capacity_w[v]:
+    #             solution[v].insert(-1, n)  # Add before returning to depot
+    #             break
     e_t = time.time()
     run_time = e_t - s_t
     print(f"Time for initial solution: {run_time:.2f} seconds")
     return solution
+# SAVINGS ALGO
 # def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, time_matrix, start_time, finish_time):
 #     s_t = time.time()
 #     solution = {v: [0, 0] for v in vehicles}  # Initialize each vehicle route with depot start and end
