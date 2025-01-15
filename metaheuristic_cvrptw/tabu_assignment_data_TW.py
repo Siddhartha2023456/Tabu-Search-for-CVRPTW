@@ -46,7 +46,6 @@ def is_valid_route(route, demands_w, max_capacity_w, time_matrix, start_time, fi
     return True
 
 
-
 def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, time_matrix, start_time, finish_time):
     s_t = time.time()
     solution = {v: [] for v in vehicles}
@@ -92,12 +91,7 @@ def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w,
         if not unvisited:
             break
 
-    # # Assign remaining unvisited nodes to any vehicle with capacity left
-    # for n in unvisited:
-    #     for v in vehicles:
-    #         if remaining_demand_w[n] <= max_capacity_w[v]:
-    #             solution[v].insert(-1, n)  # Add before returning to depot
-    #             break
+    
     e_t = time.time()
     run_time = e_t - s_t
     print(f"Time for initial solution: {run_time:.2f} seconds")
@@ -373,14 +367,13 @@ def generate_neighbors(solution, vehicles, nodes, tabu_list, max_capacity_w, dem
 
 
 
-
 def calculate_total_distance(solution, dist_matrix):
     """
     Calculate the total distance for a given solution.
     """
     total_distance = 0
     for route in solution.values():  # Assuming solution is a dictionary
-        if len(route) > 1:  # Skip empty or single-point routes
+        if len(route) > 2:  # Skip empty or single-point routes
             total_distance += sum(
                 dist_matrix[route[i], route[i + 1]] for i in range(len(route) - 1)
             )
@@ -400,7 +393,7 @@ def calculate_total_cost(solution, dist_matrix, Q1, var_cost, fixed_cost):
 
         # Recalculate cost only if the route has changed
         if route != previous_route:
-            if len(route) > 1:  # Skip unused vehicles (routes with only the depot)
+            if len(route) > 2:  # Skip unused vehicles (routes with only the depot)
                 # Fixed cost for the vehicle
                 fixed_cost_vehicle = fixed_cost[vehicle]
 
@@ -430,7 +423,6 @@ def calculate_total_cost(solution, dist_matrix, Q1, var_cost, fixed_cost):
 
     # Store the total cost
     calculate_total_cost.total_cost = total_cost
-
     
     return total_cost
 
@@ -571,7 +563,7 @@ print(len(nodes))
 print(len(demands_w))
 best_solution, best_cost, cost_progress = tabu_search(
     nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost,
-    max_iter=100, tabu_tenure=10, time_matrix=time_matrix, start_time=start_time, finish_time=finish_time
+    max_iter=100, tabu_tenure=20, time_matrix=time_matrix, start_time=start_time, finish_time=finish_time
 )
 
 # End measuring time

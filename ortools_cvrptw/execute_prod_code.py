@@ -22,7 +22,7 @@ def calculate_actual_route_cost(input_data, veh_type, seq):
 def call_main():
     # new_search_params QA_test_case_solver_params
     # solver_params99 prod_test1 solver_params_26 pickupdrop_request
-    with open('inputs/QA_test_case_solver_params (1).json', 'r') as file:
+    with open('inputs/ncubate_request.json', 'r') as file:
         solver_params = json.load(file)
         op_json, dropped_nodes = get_best_routes(solver_params)
         print(f"Dropped nodes: {len(set(dropped_nodes))} {dropped_nodes}")

@@ -3,6 +3,8 @@ import pandas as pd
 import copy
 import time
 import math
+import cProfile
+import itertools
 # Start measuring time
 starting_time = time.time()
 # def initialize_solution(nodes, vehicles, dist_matrix, demands_w, demands_v, max_capacity_w, max_capacity_v):
@@ -108,81 +110,222 @@ def initialize_solution(nodes, vehicles, dist_matrix, demands_w, demands_v, max_
 
     return solution
 
+# def generate_neighbors(solution, vehicles, nodes, tabu_list, max_capacity_w, max_capacity_v, demands_w, demands_v, dist_matrix):
+#     neighbors = []
+
+#     # Relocation: Move a node from one vehicle to another
+#     for v1 in vehicles:
+#         for v2 in vehicles:
+#             if v1 == v2:
+#                 continue
+
+#             for i in range(1, len(solution[v1]) - 1):  # Exclude depot
+#                 node = solution[v1][i]
+
+#                 # Check if moving this node to v2 violates constraints
+#                 if demands_w[node] > max_capacity_w[v2] or demands_v[node] > max_capacity_v[v2]:
+#                     continue
+
+#                 for j in range(1, len(solution[v2])):  # Exclude depot
+#                     new_solution = copy.deepcopy(solution)
+#                     new_solution[v1].remove(node)
+#                     new_solution[v2].insert(j, node)
+
+#                     # Validate cumulative capacities for both routes
+#                     if (
+#                         is_valid_route(new_solution[v1], demands_w, demands_v, max_capacity_w[v1], max_capacity_v[v1]) and
+#                         is_valid_route(new_solution[v2], demands_w, demands_v, max_capacity_w[v2], max_capacity_v[v2])
+#                     ):
+#                         if new_solution not in tabu_list:
+#                             neighbors.append(new_solution)
+
+#     # Swap: Swap two nodes between routes
+#     for v1 in vehicles:
+#         for v2 in vehicles:
+#             if v1 == v2:
+#                 continue
+
+#             for i in range(1, len(solution[v1]) - 1):  # Exclude depot
+#                 for j in range(1, len(solution[v2]) - 1):  # Exclude depot
+#                     node1 = solution[v1][i]
+#                     node2 = solution[v2][j]
+
+#                     new_solution = copy.deepcopy(solution)
+#                     new_solution[v1][i], new_solution[v2][j] = node2, node1
+
+#                     # Validate cumulative capacities for both routes
+#                     if (
+#                         is_valid_route(new_solution[v1], demands_w, demands_v, max_capacity_w[v1], max_capacity_v[v1]) and
+#                         is_valid_route(new_solution[v2], demands_w, demands_v, max_capacity_w[v2], max_capacity_v[v2])
+#                     ):
+#                         if new_solution not in tabu_list:
+#                             neighbors.append(new_solution)
+
+#     # 2-Opt: Reverse a subsequence in a single route
+#     for v in vehicles:
+#         route = solution[v]
+#         for i in range(1, len(route) - 2):  # Exclude depot
+#             for j in range(i + 1, len(route) - 1):  # Ensure valid subsequence
+#                 new_solution = copy.deepcopy(solution)
+#                 new_solution[v] = route[:i] + route[i:j+1][::-1] + route[j+1:]
+
+#                 # Validate route capacities
+#                 if is_valid_route(new_solution[v], demands_w, demands_v, max_capacity_w[v], max_capacity_v[v]):
+#                     if new_solution not in tabu_list:
+#                         neighbors.append(new_solution)
+
+#     return neighbors
+
+
+# def is_valid_route(route, demands_w, demands_v, max_capacity_w, max_capacity_v):
+#     """
+#     Helper function to check if a route satisfies capacity constraints.
+#     """
+#     total_weight = sum(demands_w[node] for node in route if node != 0)  # Exclude depot
+#     total_volume = sum(demands_v[node] for node in route if node != 0)
+#     return total_weight <= max_capacity_w and total_volume <= max_capacity_v
+
 def generate_neighbors(solution, vehicles, nodes, tabu_list, max_capacity_w, max_capacity_v, demands_w, demands_v, dist_matrix):
+    """
+    Generate neighbors for the given solution using relocation, swap, 2-opt moves, 
+    and merging routes of smaller vehicles into a larger vehicle.
+    Optimized for reduced runtime, considering max_capacity_v and demands_v.
+    """
+    s_t = time.time()
     neighbors = []
 
-    # Relocation: Move a node from one vehicle to another
-    for v1 in vehicles:
-        for v2 in vehicles:
-            if v1 == v2:
-                continue
+    def is_valid_route(route, demands_w, demands_v, max_capacity_w, max_capacity_v):
+        """
+        Helper function to check if a route satisfies capacity constraints.
+        """
+        total_weight = sum(demands_w[node] for node in route if node != 0)  # Exclude depot
+        total_volume = sum(demands_v[node] for node in route if node != 0)
+        return total_weight <= max_capacity_w and total_volume <= max_capacity_v
 
-            for i in range(1, len(solution[v1]) - 1):  # Exclude depot
-                node = solution[v1][i]
+    # Cache current weights and volumes for each vehicle
+    route_weights = {
+        v: sum(demands_w[node] for node in solution[v] if node != 0) for v in vehicles
+    }
+    route_volumes = {
+        v: sum(demands_v[node] for node in solution[v] if node != 0) for v in vehicles
+    }
+    
+    # Relocation: Move a customer from one vehicle to another
+    for v1, v2 in itertools.permutations(vehicles, 2):
+        for i in range(1, len(solution[v1]) - 1):  # Exclude depot
+            node = solution[v1][i]
+            for j in range(1, len(solution[v2])):  # Allow insertions in v2
+                # Modify routes incrementally
+                route_v1 = solution[v1][:]
+                route_v2 = solution[v2][:]
+                route_v1.remove(node)
+                route_v2.insert(j, node)
 
-                # Check if moving this node to v2 violates constraints
-                if demands_w[node] > max_capacity_w[v2] or demands_v[node] > max_capacity_v[v2]:
-                    continue
+                # Incremental checks for weight and volume
+                new_weight_v1 = route_weights[v1] - demands_w[node]
+                new_weight_v2 = route_weights[v2] + demands_w[node]
+                new_volume_v1 = route_volumes[v1] - demands_v[node]
+                new_volume_v2 = route_volumes[v2] + demands_v[node]
 
-                for j in range(1, len(solution[v2])):  # Exclude depot
-                    new_solution = copy.deepcopy(solution)
-                    new_solution[v1].remove(node)
-                    new_solution[v2].insert(j, node)
+                if (new_weight_v1 <= max_capacity_w[v1] and new_weight_v2 <= max_capacity_w[v2] and
+                    new_volume_v1 <= max_capacity_v[v1] and new_volume_v2 <= max_capacity_v[v2]):
+                    new_solution = solution.copy()
+                    new_solution[v1] = route_v1
+                    new_solution[v2] = route_v2
+                    if new_solution not in tabu_list:
+                        neighbors.append(new_solution)
 
-                    # Validate cumulative capacities for both routes
-                    if (
-                        is_valid_route(new_solution[v1], demands_w, demands_v, max_capacity_w[v1], max_capacity_v[v1]) and
-                        is_valid_route(new_solution[v2], demands_w, demands_v, max_capacity_w[v2], max_capacity_v[v2])
-                    ):
-                        if new_solution not in tabu_list:
-                            neighbors.append(new_solution)
+    # Swap: Swap two customers between two different vehicles
+    for v1, v2 in itertools.permutations(vehicles, 2):
+        for i in range(1, len(solution[v1]) - 1):
+            for j in range(1, len(solution[v2]) - 1):
+                node1, node2 = solution[v1][i], solution[v2][j]
 
-    # Swap: Swap two nodes between routes
-    for v1 in vehicles:
-        for v2 in vehicles:
-            if v1 == v2:
-                continue
+                # Modify routes incrementally
+                route_v1 = solution[v1][:]
+                route_v2 = solution[v2][:]
+                route_v1[i], route_v2[j] = node2, node1
 
-            for i in range(1, len(solution[v1]) - 1):  # Exclude depot
-                for j in range(1, len(solution[v2]) - 1):  # Exclude depot
-                    node1 = solution[v1][i]
-                    node2 = solution[v2][j]
+                # Incremental checks for weight and volume
+                new_weight_v1 = route_weights[v1] - demands_w[node1] + demands_w[node2]
+                new_weight_v2 = route_weights[v2] - demands_w[node2] + demands_w[node1]
+                new_volume_v1 = route_volumes[v1] - demands_v[node1] + demands_v[node2]
+                new_volume_v2 = route_volumes[v2] - demands_v[node2] + demands_v[node1]
 
-                    new_solution = copy.deepcopy(solution)
-                    new_solution[v1][i], new_solution[v2][j] = node2, node1
-
-                    # Validate cumulative capacities for both routes
-                    if (
-                        is_valid_route(new_solution[v1], demands_w, demands_v, max_capacity_w[v1], max_capacity_v[v1]) and
-                        is_valid_route(new_solution[v2], demands_w, demands_v, max_capacity_w[v2], max_capacity_v[v2])
-                    ):
-                        if new_solution not in tabu_list:
-                            neighbors.append(new_solution)
+                if (new_weight_v1 <= max_capacity_w[v1] and new_weight_v2 <= max_capacity_w[v2] and
+                    new_volume_v1 <= max_capacity_v[v1] and new_volume_v2 <= max_capacity_v[v2]):
+                    new_solution = solution.copy()
+                    new_solution[v1] = route_v1
+                    new_solution[v2] = route_v2
+                    if new_solution not in tabu_list:
+                        neighbors.append(new_solution)
 
     # 2-Opt: Reverse a subsequence in a single route
     for v in vehicles:
         route = solution[v]
         for i in range(1, len(route) - 2):  # Exclude depot
             for j in range(i + 1, len(route) - 1):  # Ensure valid subsequence
-                new_solution = copy.deepcopy(solution)
-                new_solution[v] = route[:i] + route[i:j+1][::-1] + route[j+1:]
+                new_route = route[:]
+                new_route[i:j + 1] = reversed(new_route[i:j + 1])
 
-                # Validate route capacities
-                if is_valid_route(new_solution[v], demands_w, demands_v, max_capacity_w[v], max_capacity_v[v]):
+                # Check weight and volume (no change in total for 2-opt)
+                if route_weights[v] <= max_capacity_w[v] and route_volumes[v] <= max_capacity_v[v]:
+                    new_solution = solution.copy()
+                    new_solution[v] = new_route
                     if new_solution not in tabu_list:
                         neighbors.append(new_solution)
 
-    return neighbors
+    # Merge routes of two smaller vehicles into a larger vehicle
+    for v1, v2, v_large in itertools.permutations(vehicles, 3):
+        if len(solution[v1]) > 2 and len(solution[v2]) > 2:
+            if max_capacity_w[v_large] >= (max_capacity_w[v1] + max_capacity_w[v2]) and \
+               max_capacity_v[v_large] >= (max_capacity_v[v1] + max_capacity_v[v2]):
+                combined_route = solution[v1][1:-1] + solution[v2][1:-1]  # Exclude depots
+                combined_weight = route_weights[v1] + route_weights[v2]
+                combined_volume = route_volumes[v1] + route_volumes[v2]
 
+                if combined_weight <= max_capacity_w[v_large] and combined_volume <= max_capacity_v[v_large]:
+                    new_solution = solution.copy()
+                    new_solution[v1] = [0, 0]  # Empty route
+                    new_solution[v2] = [0, 0]  # Empty route
+                    new_solution[v_large] = [0] + combined_route + [0]
+                    visited_nodes = {node for route in new_solution.values() for node in route if node != 0}
+                    if len(visited_nodes) == 108 and new_solution not in tabu_list:
+                        neighbors.append(new_solution)
 
-def is_valid_route(route, demands_w, demands_v, max_capacity_w, max_capacity_v):
-    """
-    Helper function to check if a route satisfies capacity constraints.
-    """
-    total_weight = sum(demands_w[node] for node in route if node != 0)  # Exclude depot
-    total_volume = sum(demands_v[node] for node in route if node != 0)
-    return total_weight <= max_capacity_w and total_volume <= max_capacity_v
+    # Split a route of a larger vehicle into two smaller vehicles
+    for v_large, v1, v2 in itertools.permutations(vehicles, 3):
+        if len(solution[v_large]) > 2 and max_capacity_w[v_large] > max_capacity_w[v1] and max_capacity_w[v_large] > max_capacity_w[v2]:
+            route_large = solution[v_large][1:-1]  # Exclude depots
+            for split_point in range(1, len(route_large)):
+                route_v1 = route_large[:split_point]
+                route_v2 = route_large[split_point:]
 
+                weight_v1 = sum(demands_w[node] for node in route_v1)
+                weight_v2 = sum(demands_w[node] for node in route_v2)
+                volume_v1 = sum(demands_v[node] for node in route_v1)
+                volume_v2 = sum(demands_v[node] for node in route_v2)
+
+                if (weight_v1 <= max_capacity_w[v1] and weight_v2 <= max_capacity_w[v2] and
+                    volume_v1 <= max_capacity_v[v1] and volume_v2 <= max_capacity_v[v2]):
+                    new_solution = solution.copy()
+                    new_solution[v_large] = []  # Empty route
+                    new_solution[v1] = [0] + route_v1 + [0]
+                    new_solution[v2] = [0] + route_v2 + [0]
+                    visited_nodes = {node for route in new_solution.values() for node in route if node != 0}
+                    if visited_nodes == set(nodes) and new_solution not in tabu_list:
+                        neighbors.append(new_solution)
+
+    # Validate all neighbors
+    valid_neighbors = []
+    for neighbor in neighbors:
+        if all(is_valid_route(neighbor[v], demands_w, demands_v, max_capacity_w[v], max_capacity_v[v]) for v in vehicles):
+            valid_neighbors.append(neighbor)
+
+    e_t = time.time()
+    run_time = e_t - s_t
+    print(f"Time for generating neighbors: {run_time:.4f} seconds")
+    return valid_neighbors
 
 
 def calculate_total_cost(solution, dist_matrix, fixed_cost, variable_cost):
@@ -212,7 +355,9 @@ def calculate_total_distance(solution, dist_matrix):
 
 
 
-def tabu_search(nodes, vehicles, dist_matrix, demands_w, demands_v, max_capacity_w, max_capacity_v, fixed_cost, variable_cost, max_iter, tabu_tenure):
+import time
+
+def tabu_search(nodes, vehicles, dist_matrix, demands_w, demands_v, max_capacity_w, max_capacity_v, fixed_cost, variable_cost, max_iter, tabu_tenure, no_improvement_limit, time_limit):
     # Initialize
     current_solution = initialize_solution(nodes, vehicles, dist_matrix, demands_w, demands_v, max_capacity_w, max_capacity_v)
     best_solution = current_solution
@@ -221,7 +366,16 @@ def tabu_search(nodes, vehicles, dist_matrix, demands_w, demands_v, max_capacity
     tabu_queue = []
     current_costs = []  # To store the current cost in each iteration
 
+    no_improvement_count = 0  # Track consecutive no-improvement iterations
+    start_time = time.time()  # Track start time
+
     for iteration in range(max_iter):
+        # Check time limit
+        elapsed_time = time.time() - start_time
+        if elapsed_time >= time_limit:
+            print(f"Terminating due to time limit: {elapsed_time:.2f}s")
+            break
+
         # Generate neighbors
         neighbors = generate_neighbors(
             current_solution, vehicles, nodes, tabu_list, max_capacity_w, max_capacity_v, demands_w, demands_v, dist_matrix
@@ -241,6 +395,14 @@ def tabu_search(nodes, vehicles, dist_matrix, demands_w, demands_v, max_capacity
             current_solution = best_neighbor
             best_cost, best_fixed_cost, best_variable_cost = calculate_total_cost(current_solution, dist_matrix, fixed_cost, variable_cost)
             best_solution = current_solution
+            no_improvement_count = 0  # Reset no-improvement counter
+        else:
+            no_improvement_count += 1
+
+        # Check no-improvement termination
+        if no_improvement_count >= no_improvement_limit:
+            print(f"Terminating due to no improvement in {no_improvement_count} consecutive iterations.")
+            break
 
         # Update tabu list
         tabu_list.append(current_solution)
@@ -250,14 +412,12 @@ def tabu_search(nodes, vehicles, dist_matrix, demands_w, demands_v, max_capacity
 
         # Record current cost
         current_costs.append(best_cost)
-        print(f"Iteration {iteration + 1}, Current Cost: {best_cost}")
+        print(f"Iteration {iteration + 1}, Current Cost: {best_cost}, Time Elapsed: {elapsed_time:.2f}s")
 
     # Calculate best distance
     best_distance = calculate_total_distance(best_solution, dist_matrix)
 
     return best_solution, best_cost, best_fixed_cost, best_variable_cost, best_distance, current_costs
-
-
 
 # Example Usage
 file_path = "inputs/ncubate_request.json"
@@ -335,7 +495,7 @@ best_solution, best_cost, best_fixed_cost, best_variable_cost, best_distance, cu
     fixed_cost=copy_fixed_cost_list,
     variable_cost=copy_per_km_cost_list,
     max_iter=30,
-    tabu_tenure=10,
+    tabu_tenure=10, no_improvement_limit=3, time_limit=70
 )
 unique_costs = sorted(set(fixed_cost_list))
 
@@ -367,3 +527,25 @@ print(f"Variable Cost: {best_variable_cost}")
 print(f"Total Distance: {best_distance}")
 print(f"Vehicle Type with fixed cost: {index_to_cost}")
 
+# profiler = cProfile.Profile()
+
+# # Profile the code block
+# profiler.enable()
+# tabu_search(
+#     nodes=nodes,
+#     vehicles=vehicles,
+#     dist_matrix=dist_matrix,
+#     demands_w=demand_w,
+#     demands_v=demand_v,
+#     max_capacity_w=max_capacity_w,
+#     max_capacity_v=max_capacity_v,
+#     fixed_cost=copy_fixed_cost_list,
+#     variable_cost=copy_per_km_cost_list,
+#     max_iter=30,
+#     tabu_tenure=10,
+# )
+#  # Call your connected functions
+# profiler.disable()
+
+# # Print profiling results
+# profiler.print_stats(sort='time')
