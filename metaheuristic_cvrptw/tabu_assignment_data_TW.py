@@ -429,11 +429,11 @@ def calculate_total_cost(solution, dist_matrix, Q1, var_cost, fixed_cost):
 
 def tabu_search(
         nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1, var_cost, fixed_cost, max_iter, tabu_tenure,
-        time_matrix, start_time, finish_time
+        time_matrix, start_time, finish_time, time_limit
 ):
     """
     Tabu Search for minimizing total cost (fixed + variable) in a CVRPTW problem.
-    Includes a stopping criterion: if no improvement for 3 iterations, terminate the search early.
+    Includes stopping criteria: no improvement for 3 iterations or exceeding the time limit.
     """
     st_time = time.time()
 
@@ -449,6 +449,11 @@ def tabu_search(
 
     for iteration in range(max_iter):
         s_t = time.time()
+
+        # Check time limit
+        if time.time() - st_time > time_limit:
+            print(f"Stopping early: Exceeded the time limit of {time_limit} seconds.")
+            break
 
         # Generate neighbors
         neighbors = generate_neighbors(
@@ -480,7 +485,7 @@ def tabu_search(
         else:
             no_improvement_count += 1
 
-        # Early stopping condition
+        # Early stopping condition for no improvement
         if no_improvement_count >= 3:
             print(f"Stopping early: No improvement in the last 3 iterations.")
             break
@@ -503,6 +508,7 @@ def tabu_search(
     print(f"Total time in Tabu Search: {total_time:.2f} seconds")
 
     return best_solution, best_cost, current_costs
+
 
 # Load data
 locations_df = pd.read_csv("C:/Users/Acer/Documents/GitHub/Tabu-Search-for-CVRPTW/inputs/locations.csv")
@@ -563,7 +569,7 @@ print(len(nodes))
 print(len(demands_w))
 best_solution, best_cost, cost_progress = tabu_search(
     nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost,
-    max_iter=100, tabu_tenure=20, time_matrix=time_matrix, start_time=start_time, finish_time=finish_time
+    max_iter=100, tabu_tenure=10, time_matrix=time_matrix, start_time=start_time, finish_time=finish_time,time_limit=60
 )
 
 # End measuring time

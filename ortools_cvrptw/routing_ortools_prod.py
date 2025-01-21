@@ -102,8 +102,7 @@ def prep_data(solver_data):
     data['optimization_option'] = solver_data['optimization_option']
     data['base_fare'] = base_fare_dict
     data['hop_fare'] = hop_fare
-    print(data['num_vehicles'])
-    print(data["fixed_costs"])
+    
     return data
 
 
@@ -346,7 +345,7 @@ def get_best_routes(solver_params):
     search_parameters.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
     )
-    search_parameters.time_limit.FromSeconds(70)
+    search_parameters.time_limit.FromSeconds(60)
     search_parameters.log_search = False
 
     # Solve the problem.
