@@ -8,7 +8,7 @@ locations_df = pd.read_csv("C:/Users/Acer/Documents/GitHub/Tabu-Search-for-CVRPT
 order_list_df = pd.read_excel('C:/Users/Acer/Documents/GitHub/Tabu-Search-for-CVRPTW/inputs/order_list_1.xlsx')
 travel_matrix_df = pd.read_csv('C:/Users/Acer/Documents/GitHub/Tabu-Search-for-CVRPTW/inputs/travel_matrix.csv')
 trucks_df = pd.read_csv('C:/Users/Acer/Documents/GitHub/Tabu-Search-for-CVRPTW/inputs/trucks.csv')
-
+service_time = 30
 # Preprocess data
 dest1 = list(set(order_list_df['Destination Code']))
 dest = [str(i) for i in dest1]
@@ -140,7 +140,7 @@ def main():
     def time_callback(from_index, to_index):
         from_node = manager.IndexToNode(from_index)
         to_node = manager.IndexToNode(to_index)
-        return data['time_matrix'][from_node][to_node]
+        return data['time_matrix'][from_node][to_node]+ service_time
 
     time_callback_index = routing.RegisterTransitCallback(time_callback)
     routing.AddDimension(

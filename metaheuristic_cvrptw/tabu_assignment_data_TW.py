@@ -17,7 +17,7 @@ def is_valid_capacity(route, demands_w, max_capacity_w):
                 return False
     return True
 
-def is_valid_time_window(route, time_matrix, start_time, finish_time):
+def is_valid_time_window(route, time_matrix, start_time, finish_time,service_time):
     current_time = 0  # Start at time 0
     for i in range(len(route) - 1):  # Traverse the route using indices
         node = route[i]
@@ -29,18 +29,18 @@ def is_valid_time_window(route, time_matrix, start_time, finish_time):
             current_time = start_time[next_node]
 
         # Check if we are within the time window
-        if current_time > finish_time[next_node]:
+        if current_time + service_time > finish_time[next_node]:
             return False
     return True
 
-def is_valid_route(route, demands_w, max_capacity_w, time_matrix, start_time, finish_time):
+def is_valid_route(route, demands_w, max_capacity_w, time_matrix, start_time, finish_time,service_time):
     if not is_valid_capacity(route, demands_w, max_capacity_w):
         return False
 
     for i in range(len(route) - 1):
         next_node = route[i + 1]
         if (finish_time[next_node] - start_time[next_node]) < 560:
-            if not is_valid_time_window(route, time_matrix, start_time, finish_time):
+            if not is_valid_time_window(route, time_matrix, start_time, finish_time,service_time):
                 return False
 
     return True
@@ -96,6 +96,7 @@ def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w,
     run_time = e_t - s_t
     print(f"Time for initial solution: {run_time:.2f} seconds")
     return solution
+
 # SAVINGS ALGO
 # def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, time_matrix, start_time, finish_time):
 #     s_t = time.time()
@@ -567,6 +568,9 @@ for i in travel_matrix_df.index:
 max_capacity_w = {v: Q1[v] for v in range(len(Q1))}
 print(len(nodes))
 print(len(demands_w))
+print(max_capacity_w)
+print(Q1)
+print(len(start_time))
 best_solution, best_cost, cost_progress = tabu_search(
     nodes, vehicles, dist_matrix, demands_w, max_capacity_w, Q1=Q1, var_cost=var_cost, fixed_cost=fixed_cost,
     max_iter=100, tabu_tenure=10, time_matrix=time_matrix, start_time=start_time, finish_time=finish_time,time_limit=60
