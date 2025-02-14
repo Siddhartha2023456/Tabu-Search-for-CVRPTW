@@ -4,8 +4,8 @@ import itertools
 import copy
 import time
 import numpy as np
-dataset = pd.read_csv("inputs\\order_data_lat_lon_1000.csv")
-vehicle_data = pd.read_csv("inputs\\VEHICLE_DATA_LAT_LON_1000.csv")
+dataset = pd.read_csv("inputs\\order_data_lat_lon_2000.csv")
+vehicle_data = pd.read_csv("inputs\\VEHICLE_DATA_LAT_LON_2000.csv")
 loc_data = dataset[['lat','long']]
 depot = pd.DataFrame({'lat': [52.506885], 'long': [-1.728302]})
 loc_data_with_depot = pd.concat([depot, loc_data], ignore_index=True)   

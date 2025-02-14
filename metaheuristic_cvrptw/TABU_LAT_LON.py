@@ -277,6 +277,7 @@ def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w,
     
     end = time.time()
     print(f"Total cost of initial solution: {f1cost + variable1cost}")
+    
     return solution
 
 import numpy as np
@@ -588,36 +589,6 @@ end_time_total = time.time()
 
 total_runtime = end_time_total - start_time_total
 print(f"Total Tabu Search Runtime: {total_runtime:.2f} seconds")
-print('*'*50)
-# Display results
-# print("Best Solution:")
-# distance = []
-# fcost = 0
-# variable_cost = 0
-# route_t = []
-# service_t = []
-# for v, route in best_solution.items():
-#     if len(route) <= 2:
-#         continue
-#     route_distance = sum(dist_matrix[route[i], route[i + 1]] for i in range(len(route) - 1))
-#     route_time = sum(time_matrix[route[i], route[i + 1]] for i in range(len(route) - 1))
-#     serv_time = sum(service_time[i] for i in range(len(route) - 1))
-#     distance.append(route_distance)
-#     route_t.append(route_time)
-#     service_t.append(serv_time)
-#     print(f"Vehicle {v}: Route: {route}, Distance: {route_distance:.2f}, Travel Time: {route_time:.2f} minutes, Service Time: {serv_time:.2f} minutes, fixed cost:{fixed_cost[v]}, variable cost:{route_distance * var_cost[v]}")
-#     if len(route)>2:    
-#         fcost += fixed_cost[v]
-#         variable_cost += route_distance * var_cost[v]
-
-# # print(f"Total Distance: {best_distance}")
-# print(f"Total cost = {fcost + variable_cost}")
-# print(f"Total distance = {sum(distance)}")
-# print(f"Total travel time = {sum(route_t)}")
-# print(f"Total service time = {sum(service_t)}")
-# print('-'*75)
-# print(f" Fixed Cost :{fcost}")
-# print(f" Variable Cost : {variable_cost}")
 print('*' * 50)
 print("Best Solution:")
 distance = []
