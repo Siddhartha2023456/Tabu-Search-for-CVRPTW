@@ -33,7 +33,7 @@ def is_valid_time_window(route, time_matrix, start_time, finish_time,service_tim
             return False
     return True
 
-def is_valid_route(route, demands_w, max_capacity_w, time_matrix, start_time, finish_time,service_time):
+def is_valid_route(route, demands_w, max_capacity_w, time_matrix, start_time, finish_time,service_time=0):
     if not is_valid_capacity(route, demands_w, max_capacity_w):
         return False
 

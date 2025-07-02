@@ -8,8 +8,8 @@ def create_data_model():
     data = {}
     
     # Load location and vehicle data
-    orders_df = pd.read_csv("C:\\Users\\Acer\\Downloads\\order_data_lat_lon_1000.csv")
-    vehicles_df = pd.read_csv("C:\\Users\\Acer\\Downloads\\VEHICLE_DATA_LAT_LON_1000.csv")
+    orders_df = pd.read_csv("C:\\Users\\Acer\\Downloads\\order_data_lat_lon_100.csv")
+    vehicles_df = pd.read_csv("C:\\Users\\Acer\\Downloads\\VEHICLE_DATA_LAT_LON_100.csv")
     
     num_locations = len(orders_df) + 1  # Including depot
     num_vehicles = len(vehicles_df)
@@ -104,7 +104,7 @@ def solve_cvrptw():
         routing.solver().Add(routing.VehicleVar(node) >= 0)
     
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-    search_parameters.time_limit.seconds = 1500
+    search_parameters.time_limit.seconds = 10
     search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
     search_parameters.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
     solution = routing.SolveWithParameters(search_parameters)
@@ -119,7 +119,8 @@ def print_solution(data, manager, routing, solution):
     
     for vehicle_id in range(data['num_vehicles']):
         index = routing.Start(vehicle_id)
-        route_distance, vehicle_cost = 0, 0
+        route_distance, vehicle_cost,route_time = 0, 0, 600
+
         route = []
         delivery_times = []
         
@@ -129,7 +130,8 @@ def print_solution(data, manager, routing, solution):
             previous_index = index
             index = solution.Value(routing.NextVar(index))
             route_distance += data['distance_matrix'][manager.IndexToNode(previous_index)][manager.IndexToNode(index)]
-        
+            route_time += data['time_matrix'][manager.IndexToNode(previous_index)][manager.IndexToNode(index)] + data['service_times'][node_index]
+            delivery_times.append(route_time)
         if len(route) > 2:  # Ensure the vehicle has a delivery assignment
             route.append(manager.IndexToNode(index))
             vehicle_cost += route_distance * data['variable_costs'][vehicle_id] + data['fixed_costs'][vehicle_id]

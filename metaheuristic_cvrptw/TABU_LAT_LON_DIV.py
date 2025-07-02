@@ -265,7 +265,7 @@ def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w,
             variable1cost += route_distance * var_cost[v]
     end = time.time()
     print(f"Total cost of initial solution: {f1cost + variable1cost}")
-    print(f"Total time of initial solution: {end - start:.2f} seconds")
+    # print(f"Total time of initial solution: {end - start:.2f} seconds")
 
     return solution
 

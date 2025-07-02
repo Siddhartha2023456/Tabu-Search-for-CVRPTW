@@ -1,11 +1,12 @@
 from math import radians, sin, cos, sqrt, atan2
+import math
 import pandas as pd
 import itertools
 import copy
 import time
 import numpy as np
-dataset = pd.read_csv("inputs\\order_data_lat_lon_2000.csv")
-vehicle_data = pd.read_csv("inputs\\VEHICLE_DATA_LAT_LON_2000.csv")
+dataset = pd.read_csv("inputs\\order_data_lat_lon_100.csv")
+vehicle_data = pd.read_csv("inputs\\Book100.csv")
 loc_data = dataset[['lat','long']]
 depot = pd.DataFrame({'lat': [52.506885], 'long': [-1.728302]})
 loc_data_with_depot = pd.concat([depot, loc_data], ignore_index=True)   
@@ -113,8 +114,6 @@ def is_valid_route(route, demands_w, max_capacity_w, time_matrix, start_time, fi
             return False
 
     return True
-
-
 # def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w, time_matrix, start_time, finish_time, service_time):
 #     start = time.time()
 #     solution = {v: [] for v in vehicles}
@@ -277,7 +276,8 @@ def initialize_solution(nodes, vehicles, dist_matrix, demands_w, max_capacity_w,
     
     end = time.time()
     print(f"Total cost of initial solution: {f1cost + variable1cost}")
-    
+    cost_1 = calculate_total_cost(solution, dist_matrix, max_capacity_w, var_cost, fixed_cost)
+    print(f"Total cost of initial solution: {cost_1}")
     return solution
 
 import numpy as np
